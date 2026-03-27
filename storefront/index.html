@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maquette V5 – Tchokos (Dashboard ventes + Quartiers + Variantes + Permissions)</title>
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --line:#1f2937;
+      --shadow: 0 10px 25px rgba(0,0,0,.25);
+      --radius: 18px;
+      --card: rgba(17,24,39,.86);
+      --glass: rgba(15,23,42,.35);
+      --accent: rgba(34,197,94,.85);
+      --accent2: rgba(96,165,250,.85);
+      --warn: rgba(245,158,11,.85);
+      --danger: rgba(239,68,68,.85);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,.18), transparent 60%),
+                  radial-gradient(900px 500px at 90% 10%, rgba(34,197,94,.14), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+    }
+    a{color:inherit;text-decoration:none}
+    .container{max-width:1280px;margin:0 auto;padding:18px}
+    header{
+      position:sticky;top:0;z-index:10;
+      backdrop-filter: blur(10px);
+      background: rgba(11,15,23,.72);
+      border-bottom:1px solid rgba(31,41,55,.7);
+    }
+    .topbar{
+      display:flex;align-items:center;gap:14px;justify-content:space-between;
+      padding:14px 18px;
+      max-width:1280px;margin:0 auto;
+      flex-wrap:wrap;
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:42px;height:42px;border-radius:14px;
+      background: linear-gradient(135deg, rgba(34,197,94,.9), rgba(96,165,250,.9));
+      box-shadow: var(--shadow);
+      display:grid;place-items:center;font-weight:900;
+    }
+    .brand h1{font-size:16px;margin:0;line-height:1.1}
+    .brand p{margin:0;font-size:12px;color:var(--muted)}
+    .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{
+      padding:9px 12px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.9);
+      background: rgba(15,23,42,.35);
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .tab.active{border-color:var(--accent); background: rgba(34,197,94,.14)}
+    .chip{
+      padding:8px 10px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.9);
+      background: rgba(15,23,42,.55);
+      font-size:12px;
+      display:flex;gap:8px;align-items:center;
+      white-space:nowrap;
+    }
+    .btn{
+      border:1px solid rgba(31,41,55,.9);
+      background: rgba(17,24,39,.85);
+      color:var(--text);
+      padding:10px 12px;border-radius:999px;
+      cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;
+      font-weight:650;
+      user-select:none;
+    }
+    .btn:hover{border-color:rgba(96,165,250,.9)}
+    .btn.primary{border-color:rgba(34,197,94,.65); background: rgba(34,197,94,.14)}
+    .btn.warn{border-color:rgba(245,158,11,.65); background: rgba(245,158,11,.12)}
+    .btn.danger{border-color:rgba(239,68,68,.65); background: rgba(239,68,68,.12)}
+    .btn.ghost{background: rgba(15,23,42,.35)}
+    .btn.small{padding:8px 10px;font-size:12px}
+
+    .hero{
+      background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.75));
+      border:1px solid rgba(31,41,55,.85);
+      border-radius: 18px;
+      padding:18px;
+      box-shadow: var(--shadow);
+    }
+    .hero h2{margin:0 0 8px 0;font-size:18px}
+    .hero .sub{color:var(--muted);margin:0;font-size:13px;line-height:1.35}
+
+    .page{display:none;margin-top:18px}
+    .page.active{display:block}
+
+    .grid{display:grid;grid-template-columns: 1.15fr .85fr;gap:16px;margin-top:18px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} .sidebar{position:static} }
+    .sidebar{position:sticky;top:88px;align-self:start}
+
+    .section-title{display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px 0;}
+    .section-title h3{margin:0;font-size:14px}
+    .section-title span{color:var(--muted);font-size:12px}
+
+    .panel{
+      background: rgba(17,24,39,.86);
+      border:1px solid rgba(31,41,55,.85);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panel-head{
+      padding:14px 14px 10px 14px;
+      border-bottom:1px solid rgba(31,41,55,.85);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    }
+    .panel-head h3{margin:0;font-size:14px}
+    .panel-body{padding:12px 14px}
+
+    .muted{color:var(--muted);font-size:12px;line-height:1.35}
+    .hero-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .input{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.9);
+      background: rgba(15,23,42,.55);
+    }
+    .input input{
+      border:none;outline:none;background:transparent;color:var(--text);width:100%;font-size:13px;
+    }
+    select.select{
+      padding:10px 12px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.9);
+      background: rgba(15,23,42,.55);
+      color:var(--text);outline:none;font-size:12px;
+    }
+
+    .products{display:grid;grid-template-columns: repeat(3, 1fr);gap:12px;}
+    @media (max-width: 920px){ .products{grid-template-columns: repeat(2, 1fr);} }
+    @media (max-width: 520px){ .products{grid-template-columns: 1fr;} }
+
+    .card{
+      border:1px solid rgba(31,41,55,.85);
+      border-radius: 18px;
+      background: rgba(17,24,39,.86);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;flex-direction:column;
+      min-height: 250px;
+    }
+    .img{
+      height:110px;
+      background:
+        linear-gradient(135deg, rgba(96,165,250,.28), rgba(34,197,94,.18)),
+        radial-gradient(420px 160px at 20% 20%, rgba(255,255,255,.10), transparent 60%),
+        rgba(15,23,42,.35);
+      display:flex;align-items:flex-end;justify-content:space-between;
+      padding:10px 12px;
+    }
+    .tag{
+      font-size:11px;
+      background: rgba(15,23,42,.65);
+      border:1px solid rgba(31,41,55,.8);
+      padding:6px 9px;border-radius:999px;
+    }
+    .content{padding:12px;display:flex;flex-direction:column;gap:10px;flex:1}
+    .title{display:flex;justify-content:space-between;gap:10px}
+    .title h4{margin:0;font-size:13px}
+    .code{color:var(--muted);font-size:11px;line-height:1.35;margin-top:2px}
+    .price{display:flex;flex-direction:column;align-items:flex-end;min-width: 96px}
+    .price .now{font-weight:900}
+    .price .hint{color:var(--muted);font-size:11px}
+    .footer{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+    .cart-items{display:flex;flex-direction:column;gap:10px}
+    .cart-item{
+      display:flex;justify-content:space-between;gap:10px;align-items:flex-start;
+      padding:10px;border-radius:14px;
+      border:1px solid rgba(31,41,55,.85);
+      background: rgba(15,23,42,.35);
+    }
+    .left{display:flex;gap:10px}
+    .thumb{
+      width:44px;height:44px;border-radius:14px;
+      border:1px solid rgba(31,41,55,.85);
+      background: linear-gradient(135deg, rgba(34,197,94,.25), rgba(96,165,250,.25));
+      flex:0 0 auto;
+    }
+    .ci-title{margin:0;font-size:12px;font-weight:800}
+    .ci-sub{margin:4px 0 0 0;font-size:11px;color:var(--muted)}
+    .qty{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+    .qty button{
+      width:28px;height:28px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.9);
+      background: rgba(17,24,39,.85);
+      color:var(--text);cursor:pointer;font-weight:900;
+    }
+    .summary{margin-top:12px;padding-top:12px;border-top:1px solid rgba(31,41,55,.85);display:flex;flex-direction:column;gap:8px}
+    .row{display:flex;justify-content:space-between;font-size:12px}
+    .row strong{font-size:13px}
+    .hintline{font-size:11px;color:var(--muted);line-height:1.35}
+
+    .statusPill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 9px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.85);
+      background: rgba(15,23,42,.35);
+      font-size:11px;white-space:nowrap;
+    }
+    .statusPill.ok{border-color:rgba(34,197,94,.65); background: rgba(34,197,94,.12)}
+    .statusPill.warn{border-color:rgba(245,158,11,.65); background: rgba(245,158,11,.12)}
+    .statusPill.bad{border-color:rgba(239,68,68,.65); background: rgba(239,68,68,.12)}
+
+    .productPage{display:grid;grid-template-columns: 1fr 1fr;gap:12px;margin-top:12px}
+    @media (max-width: 860px){ .productPage{grid-template-columns:1fr} }
+    .bigImg{
+      min-height: 280px;border-radius: 18px;
+      border:1px solid rgba(31,41,55,.85);
+      background:
+        linear-gradient(135deg, rgba(96,165,250,.28), rgba(34,197,94,.18)),
+        radial-gradient(520px 220px at 30% 30%, rgba(255,255,255,.10), transparent 60%),
+        rgba(15,23,42,.35);
+      box-shadow: var(--shadow);
+      padding:14px;display:flex;align-items:flex-end;justify-content:space-between;
+    }
+    .box{
+      background: rgba(17,24,39,.86);
+      border:1px solid rgba(31,41,55,.85);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .badge{
+      font-size:11px;padding:6px 9px;border-radius:999px;
+      border:1px solid rgba(31,41,55,.85);
+      background: rgba(15,23,42,.35);
+    }
+
+    .checkout{display:none;margin-top:16px}
+    .checkout-grid{display:grid;grid-template-columns: 1fr 1fr;gap:12px}
+    @media (max-width: 760px){ .checkout-grid{grid-template-columns:1fr} }
+    label{font-size:12px;color:var(--muted)}
+    .text, select{width:100%;padding:10px 12px;border-radius:14px;border:1px solid rgba(31,41,55,.9);background: rgba(15,23,42,.45);color:var(--text);outline:none}
+    .paybox{margin-top:10px;padding:12px;border-radius:18px;border:1px solid rgba(31,41,55,.85);background: rgba(15,23,42,.35)}
+    .success{display:none;margin-top:12px;padding:12px;border-radius:18px;border:1px solid rgba(34,197,94,.6);background: rgba(34,197,94,.12);font-size:12px;line-height:1.35}
+
+    .kpis{display:grid;grid-template-columns: repeat(4, 1fr);gap:12px;margin-top:12px}
+    @media (max-width: 980px){ .kpis{grid-template-columns: repeat(2, 1fr)} }
+    @media (max-width: 520px){ .kpis{grid-template-columns: 1fr} }
+    .kpi{
+      border:1px solid rgba(31,41,55,.85);
+      border-radius: 18px;
+      background: rgba(17,24,39,.86);
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .value{font-weight:950;font-size:18px;margin-top:8px}
+    .kpi .mini{color:var(--muted);font-size:11px;margin-top:6px}
+
+    .bars{display:grid;grid-template-columns: 1fr 1fr;gap:12px;margin-top:12px}
+    @media (max-width: 980px){ .bars{grid-template-columns:1fr} }
+    .barCard{
+      border:1px solid rgba(31,41,55,.85);
+      border-radius: 18px;
+      background: rgba(17,24,39,.86);
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .barRow{display:flex;align-items:center;gap:10px;margin-top:10px}
+    .barName{width:120px;color:var(--muted);font-size:12px}
+    .barTrack{flex:1;height:10px;border-radius:999px;background: rgba(15,23,42,.5);border:1px solid rgba(31,41,55,.7);overflow:hidden}
+    .barFill{height:100%;background: linear-gradient(90deg, rgba(34,197,94,.7), rgba(96,165,250,.7))}
+    .barVal{width:90px;text-align:right;font-size:12px;color:var(--muted)}
+
+    table{width:100%;border-collapse:collapse;font-size:12px;border-radius:14px;overflow:hidden}
+    th, td{padding:10px;border-bottom:1px solid rgba(31,41,55,.85);text-align:left;vertical-align:top}
+    th{background: rgba(15,23,42,.35);font-weight:900}
+
+    .packsGrid{display:grid;grid-template-columns: repeat(2, 1fr);gap:12px}
+    @media (max-width: 860px){ .packsGrid{grid-template-columns:1fr} }
+    .packCard{border:1px solid rgba(31,41,55,.85);background: rgba(17,24,39,.86);border-radius: 18px;box-shadow: var(--shadow);padding:14px}
+    .mini{font-size:11px;color:var(--muted);line-height:1.35}
+
+    .distGrid{display:grid;grid-template-columns: repeat(3, 1fr);gap:10px;margin-top:10px}
+    @media (max-width: 860px){ .distGrid{grid-template-columns: repeat(2, 1fr)} }
+    @media (max-width: 520px){ .distGrid{grid-template-columns: 1fr} }
+    .distCell{border:1px solid rgba(31,41,55,.85);background: rgba(15,23,42,.35);border-radius:14px;padding:10px}
+    .distCell strong{font-size:12px}
+  
+/* =========================
+   V6 "Apple Light" THEME OVERRIDES (keep V5 features/JS)
+   ========================= */
+:root{
+  --bg:#f5f5f7 !important;
+  --text:#111827 !important;
+  --muted:#6b7280 !important;
+  --line:#e5e7eb !important;
+  --shadow: 0 10px 30px rgba(0,0,0,.08) !important;
+  --radius: 18px !important;
+  --card:#ffffff !important;
+  --glass: rgba(255,255,255,.65) !important;
+  --accent:#0a84ff !important;
+  --accent2:#34c759 !important;
+  --warn:#ff9f0a !important;
+  --danger:#ff3b30 !important;
+}
+
+body{
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(10,132,255,.12), transparent 60%),
+              radial-gradient(900px 500px at 90% 10%, rgba(52,199,89,.10), transparent 60%),
+              var(--bg) !important;
+  color: var(--text) !important;
+}
+
+header{
+  background: rgba(245,245,247,.78) !important;
+  border-bottom: 1px solid rgba(229,231,235,.9) !important;
+}
+
+.logo{
+  background: linear-gradient(135deg, rgba(10,132,255,.92), rgba(52,199,89,.92)) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06) !important;
+}
+.brand p{ color: var(--muted) !important; }
+
+.tab{
+  border:1px solid var(--line) !important;
+  background: rgba(255,255,255,.65) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02) !important;
+}
+.tab.active{
+  border-color: rgba(10,132,255,.35) !important;
+  background: rgba(10,132,255,.10) !important;
+  color: #0b5bd3 !important;
+}
+
+.chip{
+  border:1px solid var(--line) !important;
+  background: #f2f2f7 !important;
+  color: var(--text) !important;
+}
+
+.btn{
+  border:1px solid var(--line) !important;
+  background: rgba(255,255,255,.90) !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02) !important;
+}
+.btn:hover{ border-color: rgba(10,132,255,.35) !important; }
+.btn.primary{
+  border-color: rgba(10,132,255,.35) !important;
+  background: rgba(10,132,255,.10) !important;
+  color:#0b5bd3 !important;
+}
+.btn.warn{
+  border-color: rgba(255,159,10,.35) !important;
+  background: rgba(255,159,10,.10) !important;
+  color:#8a5200 !important;
+}
+.btn.danger{
+  border-color: rgba(255,59,48,.35) !important;
+  background: rgba(255,59,48,.10) !important;
+  color:#9b1c16 !important;
+}
+.btn.ghost{ background: rgba(255,255,255,.55) !important; }
+
+.hero{
+  background: rgba(255,255,255,.82) !important;
+  border:1px solid var(--line) !important;
+  box-shadow: var(--shadow) !important;
+}
+.hero .sub{ color: var(--muted) !important; }
+
+.panel{
+  background: var(--card) !important;
+  border:1px solid var(--line) !important;
+  box-shadow: var(--shadow) !important;
+}
+.panel-head{ border-bottom:1px solid var(--line) !important; }
+
+.card{
+  background: var(--card) !important;
+  border:1px solid var(--line) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06) !important;
+}
+.img{
+  background: linear-gradient(135deg, rgba(10,132,255,.10), rgba(52,199,89,.10)),
+              radial-gradient(420px 160px at 25% 25%, rgba(0,0,0,.04), transparent 60%),
+              rgba(255,255,255,.8) !important;
+  border-bottom:1px solid var(--line) !important;
+}
+.tag{
+  background: rgba(245,245,247,.90) !important;
+  border:1px solid var(--line) !important;
+  color:#374151 !important;
+}
+
+.input{
+  border:1px solid var(--line) !important;
+  background: rgba(255,255,255,.75) !important;
+}
+.input input{ color: var(--text) !important; }
+
+select, .text{
+  border:1px solid var(--line) !important;
+  background: rgba(255,255,255,.85) !important;
+  color: var(--text) !important;
+}
+select:focus, .text:focus{
+  box-shadow: 0 0 0 4px rgba(10,132,255,.18) !important;
+  border-color: rgba(10,132,255,.35) !important;
+}
+
+.cart-item{
+  border:1px solid var(--line) !important;
+  background: rgba(245,245,247,.70) !important;
+}
+.thumb{
+  border:1px solid var(--line) !important;
+  background: linear-gradient(135deg, rgba(10,132,255,.14), rgba(52,199,89,.14)) !important;
+}
+.ci-sub{ color: var(--muted) !important; }
+
+.summary{ border-top:1px solid var(--line) !important; }
+
+.statusPill{
+  border:1px solid var(--line) !important;
+  background: rgba(255,255,255,.75) !important;
+  color:#374151 !important;
+}
+.statusPill.ok{
+  border-color: rgba(52,199,89,.35) !important;
+  background: rgba(52,199,89,.10) !important;
+  color:#1f7a3a !important;
+}
+.statusPill.warn{
+  border-color: rgba(255,159,10,.35) !important;
+  background: rgba(255,159,10,.10) !important;
+  color:#8a5200 !important;
+}
+.statusPill.bad{
+  border-color: rgba(255,59,48,.35) !important;
+  background: rgba(255,59,48,.10) !important;
+  color:#9b1c16 !important;
+}
+
+.box{
+  background: var(--card) !important;
+  border:1px solid var(--line) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06) !important;
+}
+
+.paybox{
+  background: rgba(245,245,247,.70) !important;
+  border:1px solid var(--line) !important;
+}
+
+table{
+  border-radius:14px !important;
+  overflow:hidden !important;
+}
+th{
+  background: rgba(245,245,247,.90) !important;
+  color: var(--text) !important;
+}
+td{ color: var(--text) !important; }
+th, td{ border-bottom:1px solid var(--line) !important; }
+
+a{ color: inherit !important; }
+.muted, .hintline{ color: var(--muted) !important; }
+
+
+/* V5 -> V6 style overrides (quantité +/- boutons) */
+.qty button{
+  background: rgba(255,255,255,.92) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02) !important;
+}
+.qty button:hover{
+  background: rgba(10,132,255,.08) !important;
+  border-color: rgba(10,132,255,.30) !important;
+}
+.qty button:active{
+  background: rgba(10,132,255,.12) !important;
+}
+
+
+/* Fix bouton Suppr. (bordure rouge doit entourer totalement) */
+.qty .btn.danger{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:999px !important;
+  padding:8px 12px !important;
+  line-height:1 !important;
+  height:auto !important;
+  border:1px solid rgba(255,59,48,.45) !important;
+  background: rgba(255,59,48,.10) !important;
+  color:#9b1c16 !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02) !important;
+}
+.qty .btn.danger:hover{
+  background: rgba(255,59,48,.14) !important;
+  border-color: rgba(255,59,48,.60) !important;
+}
+
+
+/* FIX: le style .qty button (28x28) casse le bouton "Suppr." car c'est aussi un <button>.
+   On force les boutons .btn (Suppr.) à ne PAS avoir width/height fixes. */
+.qty button.btn{
+  width:auto !important;
+  height:auto !important;
+  padding:8px 12px !important;
+  border-radius:999px !important;
+  line-height:1 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  white-space:nowrap !important;
+}
+
+/* et on garde les +/- en cercle */
+.qty button:not(.btn){
+  width:28px !important;
+  height:28px !important;
+  padding:0 !important;
+  border-radius:999px !important;
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">T</div>
+      <div>
+        <h1>Tchokos — Maquette V5</h1>
+        <p>Dashboard • Quartiers • Variantes • Permissions (demo)</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="tabs">
+        <div class="tab active" id="tabShop">🛍️ Boutique</div>
+        <div class="tab" id="tabReseller">🏷️ Revendeur</div>
+        <div class="tab" id="tabTrack">📦 Suivi</div>
+        <div class="tab" id="tabAdmin">📊 Dashboard</div>
+      </div>
+
+      <div class="chip"><span>Role:</span><strong id="roleLabel">Visiteur</strong></div>
+      <div class="chip"><span>Tarif:</span><strong id="modeLabel">Detail</strong></div>
+
+      <button class="btn small" id="loginBtn">🔑 Login</button>
+      <button class="btn small ghost" id="logoutBtn">🚪 Logout</button>
+      <button class="btn primary" id="openCheckoutBtn">🧾 Checkout</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="hero">
+    <h2 id="heroTitle">Boutique (variantes + quartiers)</h2>
+    <p class="sub" id="heroSub">
+      V5 ajoute : livraison par <strong>ville + quartier</strong> (frais auto), variantes propres (produit + tailles), permissions par role, et un <strong>dashboard ventes</strong> (KPIs + best sellers + CA par ville/quartier) base sur les commandes.
+    </p>
+  </div>
+
+  <section class="page active" id="pageShop">
+    <div class="grid">
+      <section>
+        <div class="section-title">
+          <h3>Catalogue</h3>
+          <span id="resultCount">0 produit(s)</span>
+        </div>
+
+        <div class="hero-row" style="margin-bottom:12px">
+          <div class="input" style="flex:1;min-width:220px">🔎 <input id="search" placeholder="Rechercher : Air, Jordan, sandales..." /></div>
+          <select class="select" id="brandFilter"><option value="ALL">Marque : Toutes</option></select>
+          <select class="select" id="catFilter">
+            <option value="ALL">Categorie : Toutes</option>
+            <option value="Sneakers">Sneakers</option>
+            <option value="Sandales">Sandales</option>
+            <option value="Sport">Sport</option>
+          </select>
+        </div>
+
+        <div class="products" id="productGrid"></div>
+
+        <div class="section-title" style="margin-top:18px">
+          <h3>Fiche produit</h3>
+          <span class="mini">Variantes + stock par taille</span>
+        </div>
+        <div id="productDetailMount" class="muted">Aucune fiche selectionnee.</div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Panier</h3>
+            <div class="hero-row">
+              <button class="btn small ghost" id="goTrackBtn">📦 Suivi</button>
+              <button class="btn small danger" id="clearCartBtn">Vider</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="muted">
+              Livraison calculee selon <strong>Ville + Quartier</strong>. MOQ revendeur verifie par SKU. Stock gere par taille.
+            </div>
+
+            <div class="cart-items" id="cartItems" style="margin-top:10px"></div>
+
+            <div class="summary">
+              <div class="row"><span>Sous-total</span><span id="subtotal">0 FCFA</span></div>
+              <div class="row"><span>Livraison</span><span id="shipping">0 FCFA</span></div>
+              <div class="row"><strong>Total</strong><strong id="total">0 FCFA</strong></div>
+
+              <button class="btn primary" id="checkoutBtn" style="margin-top:8px">✅ Passer au paiement</button>
+
+              <div class="checkout" id="checkoutSection">
+                <div class="checkout-grid">
+                  <div><label>Nom complet</label><input class="text" id="cName" placeholder="Ex: Junior N." /></div>
+                  <div><label>Telephone</label><input class="text" id="cPhone" placeholder="Ex: 6xx xx xx xx" /></div>
+
+                  <div>
+                    <label>Ville</label>
+                    <select id="cCity"></select>
+                    <div class="hintline" id="shipHint"></div>
+                  </div>
+                  <div>
+                    <label>Quartier</label>
+                    <select id="cQuarter"></select>
+                    <div class="hintline" id="quarterHint"></div>
+                  </div>
+
+                  <div><label>Adresse / details</label><input class="text" id="cAddr" placeholder="Ex: Rue, immeuble, repere..." /></div>
+                  <div>
+                    <label>Mode de paiement</label>
+                    <select id="cPay">
+                      <option>MTN Mobile Money</option>
+                      <option>Orange Money</option>
+                      <option>Paiement a la livraison (optionnel)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="paybox">
+                  <div class="muted">Demo : paiement simule → cree commande → decrement stock tailles.</div>
+                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">💳 Payer maintenant (demo)</button>
+
+                  <div class="success" id="successBox">
+                    ✅ Paiement simule OK. N° commande : <strong id="orderNo"></strong><br/>
+                    Va dans Dashboard pour voir KPIs + export CSV.
+                  </div>
+
+                  <button class="btn" style="width:100%;justify-content:center;margin-top:10px" id="copyOrderBtn">📋 Copier le N° de commande</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="page" id="pageReseller">
+    <div class="section-title">
+      <h3>Packs Revendeurs (cartons)</h3>
+      <span class="mini">Accessible uniquement si role = Revendeur</span>
+    </div>
+
+    <div id="resellerGate" class="box">
+      <div class="muted">Tu dois etre <strong>Revendeur</strong> pour voir les packs. Clique <strong>Login</strong> et choisis "Revendeur".</div>
+    </div>
+
+    <div id="resellerPanel" style="display:none">
+      <div class="packsGrid" id="packsGrid"></div>
+      <div class="hintline" style="margin-top:10px">Packs = ajout multi-tailles. MOQ verifie. Stock taille respecte.</div>
+    </div>
+  </section>
+
+  <section class="page" id="pageTrack">
+    <div class="section-title">
+      <h3>Suivi de commande</h3>
+      <span class="mini">Entre ton numero (ex: TK123456)</span>
+    </div>
+
+    <div class="box">
+      <div class="hero-row">
+        <div class="input" style="max-width:460px">🔢 <input id="trackInput" placeholder="Ex: TK123456" /></div>
+        <button class="btn primary" id="trackBtn">📦 Rechercher</button>
+        <button class="btn" id="pasteBtn">📋 Coller</button>
+        <button class="btn danger" id="resetDemoBtn" title="Effacer commandes + stock demo">🧹 Reset demo</button>
+      </div>
+      <div class="hintline" style="margin-top:10px">Demo : commandes stockees en localStorage. Statut changeable depuis Dashboard.</div>
+      <div id="trackResult" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section class="page" id="pageAdmin">
+    <div class="section-title">
+      <h3>Dashboard ventes</h3>
+      <span class="mini">Role Admin requis</span>
+    </div>
+
+    <div id="adminGate" class="box">
+      <div class="muted">Tu dois etre <strong>Admin</strong> pour acceder. Clique <strong>Login</strong> et choisis "Admin".</div>
+    </div>
+
+    <div id="adminPanel" style="display:none">
+      <div class="hero-row" style="justify-content:space-between; margin-bottom:10px">
+        <div class="muted">KPIs bases sur les commandes (CA, tickets, top produits, CA par ville/quartier).</div>
+        <div class="hero-row">
+          <select class="select" id="dashRange">
+            <option value="ALL">Periode : Tout</option>
+            <option value="7">7 derniers jours</option>
+            <option value="30">30 derniers jours</option>
+          </select>
+          <button class="btn" id="refreshDashBtn">🔄 Rafraichir</button>
+          <button class="btn warn" id="seedDemoBtn">🌱 Generer 2 commandes demo</button>
+          <button class="btn primary" id="exportCsvBtn">⬇️ Export CSV</button>
+        </div>
+      </div>
+
+      <div class="kpis" id="kpiGrid"></div>
+
+      <div class="bars">
+        <div class="barCard">
+          <div class="section-title" style="margin:0"><h3>Top produits (quantite)</h3><span class="mini">Best sellers</span></div>
+          <div id="topProducts"></div>
+        </div>
+        <div class="barCard">
+          <div class="section-title" style="margin:0"><h3>CA par zone</h3><span class="mini">Ville + Quartier</span></div>
+          <div id="revenueByZone"></div>
+        </div>
+      </div>
+
+      <div class="section-title"><h3>Commandes (gestion statut)</h3><span class="mini">Admin peut avancer le statut</span></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Liste commandes</h3>
+          <div class="hero-row">
+            <button class="btn small" id="refreshAdminBtn">🔄</button>
+            <button class="btn small danger" id="deleteAllBtn" title="Supprimer toutes les commandes demo">🗑️ Tout</button>
+          </div>
+        </div>
+        <div class="panel-body" style="overflow:auto">
+          <table>
+            <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Zone</th><th>Total</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-title"><h3>Inventaire (par taille)</h3><span class="mini">Stock bas sous 3</span></div>
+
+      <div class="panel">
+        <div class="panel-body" style="overflow:auto">
+          <table>
+            <thead><tr><th>SKU</th><th>Produit</th><th>Tailles</th><th>Actions</th></tr></thead>
+            <tbody id="stockTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
