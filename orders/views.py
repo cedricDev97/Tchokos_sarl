@@ -56,14 +56,17 @@ def is_reseller(user):
     return user.is_authenticated and user.groups.filter(name="reseller").exists()
 
 
+from django.db import transaction, IntegrityError
+import json
+
 @require_POST
 def checkout_api(request):
     payload = json.loads(request.body.decode("utf-8") or "{}")
+    print("CHECKOUT PAYLOAD =", payload)
 
     customer = payload.get("customer") or {}
-    items = payload.get("items") or []  # [{sku,size,qty,...}]
+    items = payload.get("items") or []
 
-    # champs minimum
     for k in ("name", "phone", "city", "quarter", "address"):
         if not customer.get(k):
             return JsonResponse({"ok": False, "error": f"Champ manquant: customer.{k}"}, status=400)
@@ -71,14 +74,12 @@ def checkout_api(request):
     if not items:
         return JsonResponse({"ok": False, "error": "Panier vide."}, status=400)
 
-    # ✅ Étape 2 : mode décidé par backend, pas par le JS
     pricing_mode = "reseller" if is_reseller(request.user) else "retail"
 
-    # MOQ revendeur (agrégation par SKU)
     if pricing_mode == "reseller":
         agg = {}
         for it in items:
-            sku = it.get("sku")
+            sku = (it.get("sku") or "").strip()
             qty = int(it.get("qty") or 0)
             if sku:
                 agg[sku] = agg.get(sku, 0) + qty
@@ -97,54 +98,45 @@ def checkout_api(request):
                     status=400,
                 )
 
-    # 1) charger variants + lock stock (transaction)
     with transaction.atomic():
-        order_no = gen_order_no()
-        while Order.objects.filter(order_no=order_no).exists():
-            order_no = gen_order_no()
-
         subtotal = 0
         order_items = []
 
         for it in items:
-            sku = it.get("sku")
+            sku = (it.get("sku") or "").strip()
+
             try:
-                size = int(it.get("size") or 0)
+                size = str(it.get("size") or "").strip()
                 qty = int(it.get("qty") or 0)
             except (TypeError, ValueError):
-                return JsonResponse({"ok": False, "error": "Item invalide (size/qty)."}, status=400)
+                return JsonResponse({"ok": False, "error": "Item invalide (option/qty)."}, status=400)
 
-            if size <= 0 or qty <= 0:
-                return JsonResponse({"ok": False, "error": "Item invalide (size/qty)."}, status=400)
+            print("CHECKOUT ITEM =", {"sku": sku, "size": size, "qty": qty})
 
+            if not sku or not size or qty <= 0:
+                return JsonResponse({"ok": False, "error": "Item invalide (option/qty)."}, status=400)
 
-            if not sku or qty <= 0:
-                return JsonResponse({"ok": False, "error": "Item invalide (sku/qty)."}, status=400)
-
-            
-            # lock variant row
             try:
                 variant = (
                     Variant.objects
                     .select_for_update()
                     .select_related("product", "size")
-                    .get(product__sku=sku, size__value=size)
+                    .get(product__sku=sku, size__label=size)
                 )
             except Variant.DoesNotExist:
                 return JsonResponse(
-                    {"ok": False, "error": f"Variante introuvable: {sku} T{size}"},
+                    {"ok": False, "error": f"Variante introuvable: {sku} option {size}"},
                     status=400
                 )
 
             if variant.stock_qty < qty:
                 return JsonResponse(
-                    {"ok": False, "error": f"Stock insuffisant: {sku} T{size} dispo {variant.stock_qty}"},
+                    {"ok": False, "error": f"Stock insuffisant: {sku} option {size} dispo {variant.stock_qty}"},
                     status=400
                 )
 
             product = variant.product
 
-            # ✅ prix décidé par backend
             if pricing_mode == "reseller":
                 unit_price = int(product.reseller_price or 0)
             else:
@@ -152,37 +144,50 @@ def checkout_api(request):
 
             line_total = unit_price * qty
             subtotal += line_total
-
             order_items.append((variant, product, unit_price, qty, line_total))
 
-        # shipping (temp : tu peux le recalculer côté backend plus tard)
-        shipping_fee = compute_shipping(customer.get("city", "Autre"), customer.get("quarter", "Autre"))
-        total = subtotal + shipping_fee
-        
-
-        order = Order.objects.create(
-            order_no=order_no,
-            customer_name=customer["name"],
-            customer_phone=customer["phone"],
-            city=customer["city"],
-            quarter=customer["quarter"],
-            address=customer["address"],
-            pay_method=payload.get("pay_method", "MTN Mobile Money"),
-            shipping_fee=shipping_fee,
-            subtotal=subtotal,
-            total=total,
-            mode=pricing_mode,  # ✅ nécessite un champ mode sur Order (voir étape 2 ci-dessous)
-            user=request.user if request.user.is_authenticated else None,
+        shipping_fee = compute_shipping(
+            customer.get("city", "Autre"),
+            customer.get("quarter", "Autre")
         )
+        total = subtotal + shipping_fee
 
-        # create items + decrement stock
+        order = None
+        for _ in range(10):
+            order_no = gen_order_no()
+            try:
+                order = Order.objects.create(
+                    order_no=order_no,
+                    customer_name=customer["name"],
+                    customer_phone=customer["phone"],
+                    city=customer["city"],
+                    quarter=customer["quarter"],
+                    address=customer["address"],
+                    pay_method=payload.get("pay_method", "MTN Mobile Money"),
+                    shipping_fee=shipping_fee,
+                    subtotal=subtotal,
+                    total=total,
+                    mode=pricing_mode,
+                    user=request.user if request.user.is_authenticated else None,
+                )
+                break
+            except IntegrityError:
+                order = None
+                continue
+
+        if order is None:
+            return JsonResponse(
+                {"ok": False, "error": "Impossible de générer un numéro de commande unique. Réessaie."},
+                status=500
+            )
+
         for (variant, product, unit_price, qty, line_total) in order_items:
             OrderItem.objects.create(
                 order=order,
                 variant=variant,
                 sku=product.sku,
                 product_name=product.name,
-                size_value=variant.size.value,
+                size_value=variant.size.label,
                 unit_price=unit_price,
                 qty=qty,
                 line_total=line_total
@@ -190,8 +195,7 @@ def checkout_api(request):
             variant.stock_qty -= qty
             variant.save(update_fields=["stock_qty"])
 
-    return JsonResponse({"ok": True, "orderNo": order_no, "mode": pricing_mode})
-
+    return JsonResponse({"ok": True, "orderNo": order.order_no, "mode": pricing_mode})
 
 def track_api(request, order_no: str):
     try:
@@ -390,7 +394,7 @@ def admin_analytics_api(request):
 def admin_inventory_api(request):
     qs = (Variant.objects
           .select_related("product", "size")
-          .order_by("product__sku", "size__value"))
+          .order_by("product__sku", "size__label"))
 
     rows = {}
     for v in qs:
@@ -401,7 +405,7 @@ def admin_inventory_api(request):
                 "name": v.product.name,
                 "sizes": {}
             }
-        rows[sku]["sizes"][str(v.size.value)] = int(v.stock_qty)
+        rows[sku]["sizes"][str(v.size.label)] = int(v.stock_qty)
 
     return JsonResponse({"ok": True, "results": list(rows.values())})
 
@@ -421,7 +425,7 @@ def admin_adjust_stock_api(request):
         v = (Variant.objects
              .select_for_update()
              .select_related("product", "size")
-             .get(product__sku=sku, size__value=size))
+             .get(product__sku=sku, size__label=size))
 
         new_qty = v.stock_qty + delta
         if new_qty < 0:
@@ -572,24 +576,44 @@ def reseller_my_orders_api(request):
     qs = (
         Order.objects
         .filter(user=request.user, mode="reseller")
+        .prefetch_related("status_logs")
         .order_by("-created_at")[:100]
     )
 
+    results = []
+    for o in qs:
+        last_log = o.status_logs.order_by("-created_at").first()
+
+        if last_log:
+            last_activity = {
+                "at": last_log.created_at.isoformat() if last_log.created_at else None,
+                "old": last_log.old_status,
+                "new": last_log.new_status,
+                "note": last_log.note or "",
+            }
+        else:
+            last_activity = {
+                "at": o.created_at.isoformat() if o.created_at else None,
+                "old": None,
+                "new": o.status,
+                "note": "",
+            }
+
+        results.append({
+            "orderNo": o.order_no,
+            "createdAt": o.created_at.isoformat() if o.created_at else None,
+            "status": o.status,
+            "payment_status": getattr(o, "payment_state", "unpaid"),
+            "payment_ref": getattr(o, "payment_reference", ""),
+            "total": int(o.total or 0),
+            "city": o.city,
+            "quarter": o.quarter,
+            "last_activity": last_activity,
+        })
+
     return JsonResponse({
         "ok": True,
-        "results": [
-            {
-                "orderNo": o.order_no,
-                "createdAt": o.created_at.isoformat() if o.created_at else None,
-                "status": o.status,
-                "payment_status": getattr(o, "payment_state", "unpaid"),
-                "payment_ref": getattr(o, "payment_reference", ""),
-                "total": int(o.total or 0),
-                "city": o.city,
-                "quarter": o.quarter,
-            }
-            for o in qs
-        ]
+        "results": results
     })
 
 
@@ -636,6 +660,79 @@ def reseller_order_detail_api(request, order_no: str):
                 for it in o.items.all()
             ],
         }
+    })
+
+@login_required
+@user_passes_test(is_reseller)
+def reseller_order_timeline_api(request, order_no: str):
+    try:
+        o = Order.objects.get(order_no=order_no, user=request.user, mode="reseller")
+    except Order.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+
+    logs = o.status_logs.select_related("changed_by").all()[:100]
+
+    return JsonResponse({
+        "ok": True,
+        "orderNo": o.order_no,
+        "logs": [
+            {
+                "at": l.created_at.isoformat() if l.created_at else None,
+                "old": l.old_status,
+                "new": l.new_status,
+                "by": (l.changed_by.username if l.changed_by else None),
+                "note": l.note,
+            }
+            for l in logs
+        ]
+    })
+
+@login_required
+@user_passes_test(is_reseller)
+def reseller_stats_api(request):
+    qs = Order.objects.filter(user=request.user, mode="reseller")
+
+    total_orders = qs.count()
+    total_amount = sum(int(o.total or 0) for o in qs)
+    delivered_orders = qs.filter(status="delivered").count()
+    active_orders = qs.filter(status__in=["received", "preparing", "shipped"]).count()
+    pending_payments = qs.filter(payment_state__in=["unpaid", "pending"]).count()
+
+    avg_order = int(total_amount / total_orders) if total_orders else 0
+
+    return JsonResponse({
+        "ok": True,
+        "stats": {
+            "total_orders": total_orders,
+            "total_amount": total_amount,
+            "delivered_orders": delivered_orders,
+            "active_orders": active_orders,
+            "pending_payments": pending_payments,
+            "avg_order": avg_order,
+        }
+    })
+
+@login_required
+@user_passes_test(is_reseller)
+def reseller_top_products_api(request):
+    rows = (
+        OrderItem.objects
+        .filter(order__user=request.user, order__mode="reseller")
+        .values("sku", "product_name")
+        .annotate(total_qty=Sum("qty"))
+        .order_by("-total_qty", "product_name")[:5]
+    )
+
+    return JsonResponse({
+        "ok": True,
+        "results": [
+            {
+                "sku": r["sku"],
+                "product_name": r["product_name"],
+                "qty": int(r["total_qty"] or 0),
+            }
+            for r in rows
+        ]
     })
 
 # Create your views here.

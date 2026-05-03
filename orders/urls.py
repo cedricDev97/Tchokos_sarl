@@ -28,4 +28,6 @@ urlpatterns = [
 
     path("reseller/me/orders/", views.reseller_my_orders_api, name="reseller_my_orders_api"),
     path("reseller/me/orders/<str:order_no>/", views.reseller_order_detail_api, name="reseller_order_detail_api"),
-]
+    path("reseller/me/orders/<str:order_no>/timeline/", views.reseller_order_timeline_api, name="reseller_order_timeline_api"),
+    path("reseller/me/stats/", views.reseller_stats_api, name="reseller_stats_api"),
+    path("reseller/me/top-products/", views.reseller_top_products_api, name="reseller_top_products_api"),]

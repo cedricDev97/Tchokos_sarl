@@ -22,6 +22,99 @@ function formatStatusLabel(status){
   return map[s] || status || "—";
 }
 
+function getVariantLabel(product){
+  const type = product?.variant_type || "shoe_size";
+
+  if(type === "shoe_size") return "Pointure";
+  if(type === "clothing_size") return "Taille";
+  if(type === "color") return "Couleur";
+  if(type === "capacity") return "Capacité";
+  if(type === "unique") return "Option";
+  return "Option";
+}
+
+function formatVariantValue(product, value){
+  const type = product?.variant_type || "shoe_size";
+  const v = value ?? "";
+
+  if(type === "shoe_size") return `${v}`;
+  return `${v}`;
+}
+
+function formatVariantStockLabel(product, value){
+  const label = getVariantLabel(product);
+  return `${label} ${formatVariantValue(product, value)}`;
+}
+
+function formatLastActivity(activity){
+  if(!activity) return "—";
+
+  const newLabel = formatStatusLabel(activity.new);
+  const atText = activity.at ? new Date(activity.at).toLocaleString() : "";
+
+  if(atText){
+    return `${newLabel} • ${atText}`;
+  }
+  return newLabel || "—";
+}
+
+async function loadResellerTopProducts(){
+  try{
+    const res = await fetch("/api/reseller/me/top-products/");
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+
+    if(!res.ok || !data.ok){
+      throw new Error(data.error || text.slice(0, 200) || "Erreur top produits");
+    }
+
+    const rows = data.results || [];
+    const box = byId("resellerTopProducts");
+    if(!box) return;
+
+    box.innerHTML = rows.length
+      ? rows.map(r=>`
+          <div class="row" style="justify-content:space-between; padding:8px 0; border-bottom:1px dashed rgba(15,23,42,.08);">
+            <div>
+              <div style="font-weight:800">${r.product_name}</div>
+              <div class="mini">${r.sku}</div>
+            </div>
+            <div class="pill">${r.qty}</div>
+          </div>
+        `).join("")
+      : `<div class="muted">Aucune donnée pour le moment.</div>`;
+  }catch(e){
+    const box = byId("resellerTopProducts");
+    if(box){
+      box.innerHTML = `<div class="muted">Erreur: ${e.message}</div>`;
+    }
+  }
+}
+
+function getResellerPaymentRowClass(paymentStatus){
+  const s = (paymentStatus || "").toLowerCase();
+  if(s === "unpaid") return "reseller-row-unpaid";
+  if(s === "pending") return "reseller-row-pending";
+  if(s === "failed") return "reseller-row-failed";
+  return "";
+}
+
+function getResellerPaymentFlag(paymentStatus){
+  const s = (paymentStatus || "").toLowerCase();
+
+  if(s === "unpaid"){
+    return `<div class="reseller-action-flag warn">Action requise</div>`;
+  }
+  if(s === "pending"){
+    return `<div class="reseller-action-flag pending">Vérification en cours</div>`;
+  }
+  if(s === "failed"){
+    return `<div class="reseller-action-flag danger">Paiement à reprendre</div>`;
+  }
+  return "";
+}
+
 async function openOrderDetail(orderNo){
   const modal = byId("orderDetailModal");
   const body = byId("orderDetailBody");
@@ -120,7 +213,7 @@ async function openOrderDetail(orderNo){
             <div class="orderItemRow">
               <div>
                 <div class="orderItemName">${it.name}</div>
-                <div class="orderItemMeta">${it.sku} • T${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
+                <div class="orderItemMeta">${it.sku} • Option${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
               </div>
               <div class="orderItemTotal">${money(it.line_total)}</div>
             </div>
@@ -204,7 +297,7 @@ function markOrderPaymentFailed(orderNo){
   updatePaymentStatus(orderNo, "failed");
 }
 
-function openAuthModal(tab = "login"){
+function openAuthModal(tab = "login"){            
   const m = byId("authModal");
   if(!m) return;
   m.style.display = "flex";
@@ -217,7 +310,7 @@ function closeAuthModal(){
   if(m) m.style.display = "none";
 }
 
-function showAuthNote(msg){
+function showAuthNote(msg){    
   const n = byId("authNote");
   if(!n) return;
   n.style.display = "block";
@@ -335,19 +428,20 @@ function statusBadge(status){
       stockMap[p.sku][v.size] = Number(v.stock_qty ?? 0);
     });
 
-    return {
-      id: p.sku,
-      brand: p.brand || "",
-      name: p.name || "",
-      cat: p.category || "",
-      tag: p.tag || "",
-      desc: p.description || "",
-      sizes: (p.variants || []).map(v => v.size),
-      retail: p.retail_price || 0,
-      reseller: p.reseller_price || 0,
-      image_url: p.image_url || null,
-      moq: p.reseller_moq || 1
-    };
+  return {
+    id: p.sku,
+    brand: p.brand || "",
+    name: p.name || "",
+    cat: p.category || "",
+    tag: p.tag || "",
+    desc: p.description || "",
+    sizes: (p.variants || []).map(v => v.size),
+    retail: p.retail_price || 0,
+    reseller: p.reseller_price || 0,
+    image_url: p.image_url || null,
+    moq: p.reseller_moq || 1,
+    variant_type: p.variant_type || "shoe_size"
+  };
   });
   buildPacksFromProducts();
 renderPacks(); // ou la fonction qui refresh l'onglet revendeur
@@ -429,8 +523,12 @@ function syncRoleUI(){
     byId("resellerPanel").style.display = (role === "reseller" ? "block" : "none");
   }
   if(role === "reseller"){
+  switchResellerTab("overview");
+  loadResellerStats();
+  loadResellerTopProducts();
   renderResellerOrders();
-  closeResellerOrderDetail}
+  closeResellerOrderDetail();
+}
 
   if(byId("adminGate")){
     byId("adminGate").style.display = (role === "admin" ? "none" : "block");
@@ -569,52 +667,59 @@ function syncRoleUI(){
   }
 
   async function reorderResellerOrder(orderNo){
-    try{
-      const res = await fetch(`/api/reseller/me/orders/${encodeURIComponent(orderNo)}/`);
-      const text = await res.text();
-      let data = {};
-      try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+  try{
+    const res = await fetch(`/api/reseller/me/orders/${encodeURIComponent(orderNo)}/`);
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch(_) {}
 
-      if(!res.ok || !data.ok){
-        alert(data.error || text.slice(0, 200) || "Impossible de recharger cette commande.");
-        return;
-      }
-
-      const o = data.order;
-      const items = Array.isArray(o.items) ? o.items : [];
-
-      if(!items.length){
-        alert("Cette commande ne contient aucun article.");
-        return;
-      }
-
-      cart = [];
-
-      for(const it of items){
-        cart.push({
-          sku: it.sku,
-          name: it.name,
-          size: Number(it.size),
-          qty: Number(it.qty),
-          unit_price: Number(it.unit_price || 0),
-          source: "reorder"
-        });
-      }
-
-      closeResellerOrderDetail();
-      mode = "reseller";
-
-      renderCart();
-      renderProducts();
-      renderProductDetail();
-      renderPacks();
-
-      goTab("shop");
-      alert("Les articles de cette commande ont été remis dans votre panier.");
-    }catch(e){
-      alert("Erreur réseau / serveur.");
+    if(!res.ok || !data.ok){
+      alert(data.error || text.slice(0, 200) || "Impossible de recharger cette commande.");
+      return;
     }
+
+    const o = data.order;
+    const items = Array.isArray(o.items) ? o.items : [];
+
+    if(!items.length){
+      alert("Cette commande ne contient aucun article.");
+      return;
+    }
+
+    // Recharge brut
+    const reloaded = items.map(it => ({
+      sku: it.sku,
+      name: it.name,
+      size: Number(it.size),
+      qty: Number(it.qty),
+      unit_price: Number(it.unit_price || 0),
+      source: "reorder"
+    }));
+
+    // Validation immédiate
+    cart = validateReorderCart(reloaded);
+
+    mode = "reseller";
+
+    closeResellerOrderDetail();
+
+    renderCart();
+    renderProducts();
+    renderProductDetail();
+    renderPacks();
+
+    goTab("shop");
+
+    const hasIssues = cart.some(i => i.reorder_issue);
+    if(hasIssues){
+      alert("Commande rechargée, mais certains articles nécessitent une correction avant paiement.");
+    }else{
+      alert("Les articles de cette commande ont été remis dans votre panier.");
+    }
+  }catch(e){
+    alert("Erreur réseau / serveur.");
   }
+}
 
   function renderProducts(){
   const grid = byId("productGrid");
@@ -675,6 +780,23 @@ function syncRoleUI(){
   });
 }
 
+function switchResellerTab(tabName){
+  const map = {
+    overview: "resellerTabOverview",
+    orders: "resellerTabOrders",
+    catalog: "resellerTabCatalog"
+  };
+
+  Object.entries(map).forEach(([key, id])=>{
+    const el = byId(id);
+    if(el) el.style.display = (key === tabName ? "block" : "none");
+  });
+
+  document.querySelectorAll(".resellerTabBtn").forEach(btn=>{
+    btn.classList.toggle("active", btn.getAttribute("data-reseller-tab") === tabName);
+  });
+}
+
 function renderResellerOrdersTable(list){
   const tbody = byId("resellerOrdersTable");
   if(!tbody) return;
@@ -683,6 +805,7 @@ function renderResellerOrdersTable(list){
   const statusFilter = (byId("resellerStatusFilter")?.value || "ALL").toLowerCase();
   const paymentFilter = (byId("resellerPaymentFilter")?.value || "ALL").toLowerCase();
   const searchTerm = (byId("resellerOrderSearch")?.value || "").trim().toLowerCase();
+  const sortFilter = (byId("resellerSortFilter")?.value || "recent").toLowerCase();
 
   const filtered = rows.filter(o=>{
     const st = (o.status || "").toLowerCase();
@@ -696,23 +819,83 @@ function renderResellerOrdersTable(list){
     return okStatus && okPayment && okSearch;
   });
 
-  tbody.innerHTML = filtered.map(o=>`
-    <tr>
+  const rankStatus = (s) => {
+    const v = (s || "").toLowerCase();
+    if (v === "received") return 1;
+    if (v === "preparing") return 2;
+    if (v === "shipped") return 3;
+    if (v === "delivered") return 4;
+    if (v === "cancelled") return 5;
+    if (v === "failed") return 6;
+    return 99;
+  };
+
+  const rankPayment = (s) => {
+    const v = (s || "").toLowerCase();
+    if (v === "unpaid") return 1;
+    if (v === "pending") return 2;
+    if (v === "failed") return 3;
+    if (v === "paid") return 4;
+    return 99;
+  };
+
+  filtered.sort((a, b) => {
+    const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const aTotal = Number(a.total || 0);
+    const bTotal = Number(b.total || 0);
+
+    if (sortFilter === "oldest") return aDate - bDate;
+    if (sortFilter === "highest") return bTotal - aTotal;
+    if (sortFilter === "active") {
+      const byStatus = rankStatus(a.status) - rankStatus(b.status);
+      if (byStatus !== 0) return byStatus;
+      return bDate - aDate;
+    }
+    if (sortFilter === "payment_due") {
+      const byPayment = rankPayment(a.payment_status) - rankPayment(b.payment_status);
+      if (byPayment !== 0) return byPayment;
+      return bDate - aDate;
+    }
+
+    return bDate - aDate;
+  });
+
+  tbody.innerHTML = filtered.map(o=>{
+  const rowClass = getResellerPaymentRowClass(o.payment_status);
+  const paymentFlag = getResellerPaymentFlag(o.payment_status);
+
+  return `
+    <tr class="${rowClass}">
       <td><b>${o.orderNo || ""}</b></td>
       <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : ""}</td>
       <td>${o.city || ""} / ${o.quarter || ""}</td>
       <td style="text-align:right"><b>${money(o.total || 0)}</b></td>
-      <td>${paymentBadge(o.payment_status)}</td>
+      <td>
+        ${paymentBadge(o.payment_status)}
+        ${paymentFlag}
+      </td>
       <td><span class="mini">${o.payment_ref || "—"}</span></td>
       <td>${statusBadge(o.status)}</td>
+      <td>
+        <div class="mini" style="max-width:220px;">
+          ${formatLastActivity(o.last_activity)}
+        </div>
+        ${
+          o.last_activity?.note
+            ? `<div class="mini muted" style="margin-top:3px; max-width:220px;">${o.last_activity.note}</div>`
+            : ``
+        }
+      </td>
       <td>
         <button class="btn small ghost" data-action="viewResellerOrder" data-order="${o.orderNo}">Voir</button>
       </td>
     </tr>
-  `).join("");
+  `;
+}).join("");
 
   if(filtered.length === 0){
-    tbody.innerHTML = `<tr><td colspan="8" class="muted">Aucune commande trouvée.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="muted">Aucune commande trouvée.</td></tr>`;
   }
 }
 
@@ -728,14 +911,13 @@ async function renderResellerOrders(){
     }
 
     resellerOrdersCache = data.results || [];
-    renderResellerSummary(resellerOrdersCache);
     renderResellerOrdersTable(resellerOrdersCache);
   }catch(e){
     if(byId("resellerKpiGrid")){
       byId("resellerKpiGrid").innerHTML = "";
     }
     if(byId("resellerOrdersTable")){
-      byId("resellerOrdersTable").innerHTML = `<tr><td colspan="8" class="muted">Erreur: ${e.message}</td></tr>`;
+      byId("resellerOrdersTable").innerHTML = `<tr><td colspan="9" class="muted">Erreur: ${e.message}</td></tr>`;
     }
   }
 }
@@ -749,16 +931,26 @@ async function openResellerOrderDetail(orderNo){
   body.innerHTML = `<div class="muted">Chargement...</div>`;
 
   try{
-    const res = await fetch(`/api/reseller/me/orders/${encodeURIComponent(orderNo)}/`);
-    const text = await res.text();
-    let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+    const [detailRes, timelineRes] = await Promise.all([
+      fetch(`/api/reseller/me/orders/${encodeURIComponent(orderNo)}/`),
+      fetch(`/api/reseller/me/orders/${encodeURIComponent(orderNo)}/timeline/`)
+    ]);
 
-    if(!res.ok || !data.ok){
-      throw new Error(data.error || text.slice(0, 200) || "Erreur détail commande");
+    const detailText = await detailRes.text();
+    const timelineText = await timelineRes.text();
+
+    let detailData = {};
+    let timelineData = {};
+
+    try { detailData = detailText ? JSON.parse(detailText) : {}; } catch(_) {}
+    try { timelineData = timelineText ? JSON.parse(timelineText) : {}; } catch(_) {}
+
+    if(!detailRes.ok || !detailData.ok){
+      throw new Error(detailData.error || detailText.slice(0, 200) || "Erreur détail commande");
     }
 
-    const o = data.order;
+    const o = detailData.order;
+    const logs = (timelineData.ok && Array.isArray(timelineData.logs)) ? timelineData.logs : [];
     const paidAtText = o.paid_at ? new Date(o.paid_at).toLocaleString() : "—";
 
     body.innerHTML = `
@@ -770,7 +962,7 @@ async function openResellerOrderDetail(orderNo){
             <div>${statusBadge(o.status)}</div>
             <div>${paymentBadge(o.payment_status)}</div>
           </div>
-         <div class="orderDetailAmount">
+          <div class="orderDetailAmount">
             <div class="bigTotal">${money(o.total||0)}</div>
             <div class="muted">${o.mode || ""} • ${o.pay_method || ""}</div>
             <div style="margin-top:10px;">
@@ -824,7 +1016,7 @@ async function openResellerOrderDetail(orderNo){
           <div class="orderItemRow">
             <div>
               <div class="orderItemName">${it.name}</div>
-              <div class="orderItemMeta">${it.sku} • T${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
+              <div class="orderItemMeta">${it.sku} • Option${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
             </div>
             <div class="orderItemTotal">${money(it.line_total)}</div>
           </div>
@@ -835,6 +1027,34 @@ async function openResellerOrderDetail(orderNo){
           <div class="row" style="justify-content:space-between;"><div class="muted">Livraison</div><div>${money(o.shipping||0)}</div></div>
           <div class="row" style="justify-content:space-between;"><div style="font-weight:900">Total</div><div style="font-weight:900">${money(o.total||0)}</div></div>
         </div>
+      </div>
+
+      <div class="orderDetailCard">
+        <div class="orderDetailSectionTitle">Historique</div>
+        ${
+          logs.length ? `
+            <div class="timelineList">
+              ${logs.map(l=>`
+                <div class="timelineItem">
+                  <div class="timelineTop">
+                    <div>
+                      <div class="timelineTitle">${formatStatusLabel(l.old)} → ${formatStatusLabel(l.new)}</div>
+                      <div class="timelineMeta">${l.by ? `par ${l.by}` : "par système"}</div>
+                    </div>
+                    <div class="timelineDate">${l.at ? new Date(l.at).toLocaleString() : ""}</div>
+                  </div>
+
+                  ${l.note ? `
+                    <div class="timelineNote">
+                      <div class="timelineNoteTitle">Note</div>
+                      <div class="muted">${l.note}</div>
+                    </div>
+                  ` : ""}
+                </div>
+              `).join("")}
+            </div>
+          ` : `<div class="muted">Aucun historique.</div>`
+        }
       </div>
     `;
   }catch(e){
@@ -895,10 +1115,12 @@ function renderResellerSummary(list){
       return;
     }
 
+    const variantLabel = getVariantLabel(p);
+
     const sizesHtml = p.sizes.map(s=>{
       const st = stockOf(p.id, s);
       const cls = st<=0 ? "bad" : (st<=2 ? "warn" : "ok");
-      return `<span class="statusPill ${cls}">T${s}: ${st}</span>`;
+      return `<span class="statusPill ${cls}">${formatVariantStockLabel(p, s)}: ${st}</span>`;
     }).join(" ");
 
     mount.className = "";
@@ -917,12 +1139,12 @@ function renderResellerSummary(list){
           <div class="badges">
             <span class="badge">${mode==="reseller" ? "Tarif revendeur" : "Tarif detail"}</span>
             <span class="badge">MOQ: ${p.moq}</span>
-            <span class="badge">Stock par taille</span>
+            <span class="badge">Stock par ${variantLabel.toLowerCase()}</span>
           </div>
           <div class="muted">${p.desc}</div>
 
           <div class="section-title" style="margin-top:12px">
-            <h3 style="margin:0;font-size:13px">Tailles (variantes)</h3>
+            <h3 style="margin:0;font-size:13px">${variantLabel}s / variantes</h3>
             <span class="mini">stock live</span>
           </div>
           <div class="mini" style="line-height:2">${sizesHtml}</div>
@@ -932,7 +1154,10 @@ function renderResellerSummary(list){
           </div>
 
           <div class="checkout-grid" style="margin-top:10px">
-            <div><label>Taille</label><select id="pdSize">${p.sizes.map(s=>`<option value="${s}">${s}</option>`).join("")}</select></div>
+            <div>
+              <label>${variantLabel}</label>
+              <select id="pdSize">${p.sizes.map(s=>`<option value="${s}">${formatVariantValue(p, s)}</option>`).join("")}</select>
+            </div>
             <div>
               <label>Quantite</label>
               <input class="text" id="pdQty" type="number" min="1" value="${mode==="reseller" ? p.moq : 1}" />
@@ -1005,57 +1230,132 @@ function renderResellerSummary(list){
   if(byId("checkoutSuccessModal")) byId("checkoutSuccessModal").style.display = "flex";
   }
 
-function closeCheckoutSuccessModal(){
-  if(byId("checkoutSuccessModal")) byId("checkoutSuccessModal").style.display = "none";
-  }
-
-  function renderCart(){
-    const wrap = byId("cartItems");
-    wrap.innerHTML = "";
-
-    cart.forEach((i, idx)=>{
-      const p = getProduct(i.sku);
-      const div = document.createElement("div");
-      div.className = "cart-item";
-      div.innerHTML = `
-        <div class="left">
-          <div class="thumb"></div>
-          <div>
-            <p class="ci-title">${p.name}</p>
-            <p class="ci-sub">${i.sku} • Taille ${i.size} • ${money(priceOf(p))} • Stock T${i.size}: ${stockOf(i.sku,i.size)} • Source: ${i.source}</p>
-            <div class="qty">
-              <button aria-label="moins">−</button>
-              <span>${i.qty}</span>
-              <button aria-label="plus">+</button>
-              <button class="btn small danger" style="margin-left:6px" aria-label="supprimer">Suppr.</button>
-            </div>
-          </div>
-        </div>
-        <div style="font-size:12px;font-weight:900">${money(priceOf(p)*i.qty)}</div>
-      `;
-      const btns = div.querySelectorAll("button");
-      btns[0].addEventListener("click", ()=>updateQty(idx,-1));
-      btns[1].addEventListener("click", ()=>updateQty(idx,+1));
-      btns[2].addEventListener("click", ()=>removeItem(idx));
-      wrap.appendChild(div);
-    });
-
-    const {subtotal, shipping, total} = computeTotals();
-    byId("subtotal").textContent = money(subtotal);
-    byId("shipping").textContent = money(shipping);
-    byId("total").textContent = money(total);
-
-    if(byId("cCity") && byId("cQuarter")){
-      const city = byId("cCity").value;
-      const quarter = byId("cQuarter").value;
-      byId("shipHint").textContent = cart.length ? `Livraison pour ${city}: base ${money(SHIPPING[city].base)} + quartier ${quarter}` : "";
-      byId("quarterHint").textContent = cart.length ? `Total livraison: ${money(shipping)}` : "";
+  function closeCheckoutSuccessModal(){
+    if(byId("checkoutSuccessModal")) byId("checkoutSuccessModal").style.display = "none";
     }
 
-    byId("successBox").style.display = "none";
-    renderProducts();
-    renderProductDetail();
+async function loadResellerStats(){
+  try{
+    const res = await fetch("/api/reseller/me/stats/");
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+
+    if(!res.ok || !data.ok){
+      throw new Error(data.error || text.slice(0, 200) || "Erreur stats revendeur");
+    }
+
+    const s = data.stats || {};
+    const box = byId("resellerKpiGrid");
+    if(!box) return;
+
+    box.innerHTML = `
+      <div class="kpi">
+        <div class="muted">Total commandes</div>
+        <div class="big">${s.total_orders || 0}</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Montant total</div>
+        <div class="big">${money(s.total_amount || 0)}</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Livrées</div>
+        <div class="big">${s.delivered_orders || 0}</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Panier moyen</div>
+        <div class="big">${money(s.avg_order || 0)}</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">En cours</div>
+        <div class="big">${s.active_orders || 0}</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Paiements en attente</div>
+        <div class="big">${s.pending_payments || 0}</div>
+      </div>
+    `;
+  }catch(e){
+    const box = byId("resellerKpiGrid");
+    if(box){
+      box.innerHTML = `<div class="muted">Erreur stats: ${e.message}</div>`;
+    }
   }
+}
+
+  function renderCart(){
+  const wrap = byId("cartItems");
+  wrap.innerHTML = "";
+
+  cart.forEach((i, idx)=>{
+    const p = getProduct(i.sku);
+    const div = document.createElement("div");
+    div.className = "cart-item";
+    div.innerHTML = `
+      <div class="left">
+        <div class="thumb"></div>
+        <div>
+          <p class="ci-title">${p ? p.name : (i.name || i.sku)}</p>
+          <p class="ci-sub">
+            ${i.sku} • ${getVariantLabel(p)} ${formatVariantValue(p, i.size)} • ${p ? money(priceOf(p)) : money(i.unit_price || 0)} •
+            Stock ${formatVariantStockLabel(p, i.size)}: ${stockOf(i.sku,i.size)} • Source: ${i.source}
+          </p>
+
+          ${i.reorder_issue ? `
+            <div class="mini" style="margin-top:6px; color:#b42318; font-weight:800;">
+              ⚠ ${i.reorder_issue}
+            </div>
+          ` : ``}
+
+          <div class="qty">
+            <button aria-label="moins">−</button>
+            <span>${i.qty}</span>
+            <button aria-label="plus">+</button>
+            <button class="btn small danger" style="margin-left:6px" aria-label="supprimer">Suppr.</button>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:900">
+        ${p ? money(priceOf(p) * i.qty) : money((i.unit_price || 0) * i.qty)}
+      </div>
+    `;
+
+    const btns = div.querySelectorAll("button");
+    btns[0].addEventListener("click", ()=>updateQty(idx,-1));
+    btns[1].addEventListener("click", ()=>updateQty(idx,+1));
+    btns[2].addEventListener("click", ()=>removeItem(idx));
+    wrap.appendChild(div);
+  });
+
+  const {subtotal, shipping, total} = computeTotals();
+  byId("subtotal").textContent = money(subtotal);
+  byId("shipping").textContent = money(shipping);
+  byId("total").textContent = money(total);
+
+  if(byId("cCity") && byId("cQuarter")){
+    const city = byId("cCity").value;
+    const quarter = byId("cQuarter").value;
+    byId("shipHint").textContent = cart.length ? `Livraison pour ${city}: base ${money(SHIPPING[city].base)} + quartier ${quarter}` : "";
+    byId("quarterHint").textContent = cart.length ? `Total livraison: ${money(shipping)}` : "";
+  }
+
+  const hasIssues = cart.some(i => i.reorder_issue);
+  if(byId("payNowBtn")){
+    const btn = byId("payNowBtn");
+    btn.disabled = hasIssues;
+    btn.title = hasIssues
+      ? "Corrige les articles signalés avant de passer au paiement."
+      : "";
+
+    btn.style.opacity = hasIssues ? "0.55" : "1";
+    btn.style.cursor = hasIssues ? "not-allowed" : "pointer";
+    btn.style.pointerEvents = hasIssues ? "none" : "auto";
+  }
+
+  byId("successBox").style.display = "none";
+  renderProducts();
+  renderProductDetail();
+}
 
   function openCheckout(){
     if(cart.length===0){ alert("Panier vide."); return; }
@@ -1066,6 +1366,12 @@ function closeCheckoutSuccessModal(){
 
 async function payNow(){
   if(cart.length===0) return;
+
+  const InvalidReorderItems = cart.find(i => i.reorder_issue);
+  if(InvalidReorderItems){
+    alert("Corrige les articles signalés dans le panier avant de passer au paiement.");
+    return;
+  }
 
   if(mode==="reseller"){
     const agg = {};
@@ -1109,7 +1415,7 @@ async function payNow(){
 
   try{
     const csrf = getCookie("csrftoken");
-
+    console.log("CHECKOUT PAYLOAD", JSON.stringify(payload, null, 2));
     const res = await fetch("/api/checkout/", {
       method: "POST",
       headers: {
@@ -1214,7 +1520,7 @@ async function renderTrackingFromApi(orderNo){
           <div class="row" style="justify-content:space-between;">
             <div>
               <div style="font-weight:700">${it.name}</div>
-              <div class="muted">${it.sku} • T${it.size} • x${it.qty}</div>
+              <div class="muted">${it.sku} • Option ${it.size} • x${it.qty}</div>
             </div>
             <div style="font-weight:800">${money(it.line_total)}</div>
           </div>
@@ -1231,6 +1537,62 @@ async function renderTrackingFromApi(orderNo){
 }
 
 
+  function getCurrentVariantStock(sku, size){
+  const product = getProduct(sku);
+  if(!product || !Array.isArray(product.variants)) return null;
+
+  const v = product.variants.find(x => Number(x.size) === Number(size));
+  if(!v) return null;
+
+  return Number(v.stock_qty ?? v.stock ?? 0);
+}
+
+function validateReorderCart(cartItems){
+  const results = [];
+  const agg = {};
+
+  for(const item of cartItems){
+    const sku = item.sku;
+    const size = Number(item.size);
+    const qty = Number(item.qty || 0);
+    const product = getProduct(sku);
+
+    let issue = "";
+
+    if(!product){
+      issue = "Produit introuvable";
+    } else {
+      const check = validateStock(sku, size, qty);
+      if(!check.ok){
+        issue = check.msg || `Taille ${size} indisponible`;
+      }
+    }
+
+    agg[sku] = (agg[sku] || 0) + qty;
+
+    results.push({
+      ...item,
+      reorder_issue: issue
+    });
+  }
+
+  // MOQ revendeur par SKU
+  for(let i = 0; i < results.length; i++){
+    const item = results[i];
+    const product = getProduct(item.sku);
+    if(!product) continue;
+
+    const moq = Number(product.moq || product.reseller_moq || 1);
+    const totalSkuQty = Number(agg[item.sku] || 0);
+
+    if(totalSkuQty < moq){
+      const base = results[i].reorder_issue ? `${results[i].reorder_issue} • ` : "";
+      results[i].reorder_issue = `${base}MOQ non atteint (${totalSkuQty}/${moq})`;
+    }
+  }
+
+  return results;
+}
 
   function resetDemo(){
     localStorage.removeItem(LS.ORDERS);
@@ -1407,12 +1769,12 @@ async function renderTrackingFromApi(orderNo){
     const sizeChips = Object.keys(sizes).sort((a,b)=>Number(a)-Number(b)).map(s=>{
       const qty = sizes[s];
       const low = qty <= 10;
-      return `<span class="pill ${low ? "dangerPill" : ""}">T${s}: ${qty}</span>`;
+      return `<span class="pill ${low ? "dangerPill" : ""}">${s}: ${qty}</span>`;
     }).join(" ");
 
     const actions = Object.keys(sizes).sort((a,b)=>Number(a)-Number(b)).map(s=>`
       <div style="display:flex; gap:6px; align-items:center; margin:4px 0;">
-        <span class="muted" style="min-width:48px">T${s}</span>
+        <span class="muted" style="min-width:48px">${s}</span>
         <button class="btn small" data-action="stockAdj" data-sku="${p.sku}" data-size="${s}" data-delta="1">+1</button>
         <button class="btn small ghost" data-action="stockAdj" data-sku="${p.sku}" data-size="${s}" data-delta="-1">-1</button>
       </div>
@@ -2526,6 +2888,16 @@ byId("resellerOrderDetailModal")?.addEventListener("click", (e)=>{
   if(e.target.id === "resellerOrderDetailModal") closeResellerOrderDetail();
 });
 
+byId("resellerSortFilter")?.addEventListener("change", ()=> {
+  renderResellerOrdersTable(resellerOrdersCache);
+});
+
+document.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".resellerTabBtn");
+  if(!btn) return;
+  const tab = btn.getAttribute("data-reseller-tab");
+  if(tab) switchResellerTab(tab);
+});
 
 
 

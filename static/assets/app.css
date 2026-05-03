@@ -1320,3 +1320,67 @@ a{ color: inherit !important; }
     padding:14px 16px;
   }
 }
+
+/* ===== Reseller payment emphasis ===== */
+
+.reseller-row-unpaid{
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.reseller-row-pending{
+  background: rgba(249, 115, 22, 0.08);
+}
+
+.reseller-row-failed{
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.reseller-action-flag{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:6px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+}
+
+.reseller-action-flag.warn{
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.reseller-action-flag.pending{
+  background: rgba(249, 115, 22, 0.14);
+  color: #c2410c;
+}
+
+.reseller-action-flag.danger{
+  background: rgba(239, 68, 68, 0.14);
+  color: #b91c1c;
+}
+
+/* ===== Reseller tabs ===== */
+
+.resellerTabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:16px;
+  margin-bottom:8px;
+}
+
+.resellerTabBtn{
+  border-radius:999px;
+}
+
+.resellerTabBtn.active{
+  border-color: rgba(59,130,246,.45);
+  box-shadow: 0 0 0 2px rgba(59,130,246,.10) inset;
+}
+
+.resellerTabPage{
+  display:block;
+}

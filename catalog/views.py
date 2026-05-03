@@ -18,7 +18,7 @@ def products_api(request):
             "image_url" : request.build_absolute_uri(p.image.url) if p.image else None,
 
             "variants": [
-                {"size": v.size.value, "stock_qty": v.stock_qty}
+                {"size": v.size.label, "stock_qty": v.stock_qty}
                 for v in p.variants.all()
             ]
         })

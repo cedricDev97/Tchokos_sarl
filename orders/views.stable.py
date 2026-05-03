@@ -117,7 +117,7 @@ def checkout_api(request):
             variant = (Variant.objects
                        .select_for_update()
                        .select_related("product", "size")
-                       .get(product__sku=sku, size__value=size))
+                       .get(product__sku=sku, size__label=size))
 
             if variant.stock_qty < qty:
                 return JsonResponse(
@@ -164,7 +164,7 @@ def checkout_api(request):
                 variant=variant,
                 sku=product.sku,
                 product_name=product.name,
-                size_value=variant.size.value,
+                size_value=variant.size.label,
                 unit_price=unit_price,
                 qty=qty,
                 line_total=line_total
@@ -365,7 +365,7 @@ def admin_analytics_api(request):
 def admin_inventory_api(request):
     qs = (Variant.objects
           .select_related("product", "size")
-          .order_by("product__sku", "size__value"))
+          .order_by("product__sku", "size__label"))
 
     rows = {}
     for v in qs:
@@ -376,7 +376,7 @@ def admin_inventory_api(request):
                 "name": v.product.name,
                 "sizes": {}
             }
-        rows[sku]["sizes"][str(v.size.value)] = int(v.stock_qty)
+        rows[sku]["sizes"][str(v.size.label)] = int(v.stock_qty)
 
     return JsonResponse({"ok": True, "results": list(rows.values())})
 
@@ -396,7 +396,7 @@ def admin_adjust_stock_api(request):
         v = (Variant.objects
              .select_for_update()
              .select_related("product", "size")
-             .get(product__sku=sku, size__value=size))
+             .get(product__sku=sku, size__label=size))
 
         new_qty = v.stock_qty + delta
         if new_qty < 0:

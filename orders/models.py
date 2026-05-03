@@ -60,7 +60,7 @@ class OrderItem(models.Model):
 
     sku = models.CharField(max_length=40)
     product_name = models.CharField(max_length=200)
-    size_value = models.PositiveSmallIntegerField()
+    size_value = models.CharField(max_length=50)
 
     unit_price = models.PositiveIntegerField(default=0)  # IMPORTANT
     qty = models.PositiveIntegerField(default=1)
