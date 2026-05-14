@@ -9,6 +9,10 @@ function getCookie(name){
   return "";
 }
 
+function normalizeVariantValue(v){
+  return String(v ?? "").trim();
+}
+
 function formatStatusLabel(status){
   const s = (status || "").toLowerCase();
   const map = {
@@ -31,6 +35,11 @@ function getVariantLabel(product){
   if(type === "capacity") return "Capacité";
   if(type === "unique") return "Option";
   return "Option";
+}
+
+function isPackEligible(product){
+  const type = product?.variant_type || "shoe_size";
+  return type === "shoe_size" || type === "clothing_size";
 }
 
 function formatVariantValue(product, value){
@@ -213,7 +222,7 @@ async function openOrderDetail(orderNo){
             <div class="orderItemRow">
               <div>
                 <div class="orderItemName">${it.name}</div>
-                <div class="orderItemMeta">${it.sku} • Option${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
+                <div class="orderItemMeta">${it.sku} • Option ${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
               </div>
               <div class="orderItemTotal">${money(it.line_total)}</div>
             </div>
@@ -416,38 +425,89 @@ function statusBadge(status){
 
   let products = [];
   let stockMap = {}; 
-  async function loadProductsFromApi(){
+ async function loadProductsFromApi(){
   const res = await fetch("/api/products/");
   const data = await res.json();
 
   stockMap = {};
+
   products = (data.results || []).map(p => {
-    // stock par taille depuis backend
     stockMap[p.sku] = {};
+
     (p.variants || []).forEach(v => {
-      stockMap[p.sku][v.size] = Number(v.stock_qty ?? 0);
+      const option = normalizeVariantValue(v.size);
+      stockMap[p.sku][option] = Number(v.stock_qty ?? 0);
     });
 
-  return {
-    id: p.sku,
-    brand: p.brand || "",
-    name: p.name || "",
-    cat: p.category || "",
-    tag: p.tag || "",
-    desc: p.description || "",
-    sizes: (p.variants || []).map(v => v.size),
-    retail: p.retail_price || 0,
-    reseller: p.reseller_price || 0,
-    image_url: p.image_url || null,
-    moq: p.reseller_moq || 1,
-    variant_type: p.variant_type || "shoe_size"
-  };
+    return {
+      id: p.sku,
+      brand: p.brand || "",
+      name: p.name || "",
+      cat: p.category || "",
+      tag: p.tag || "",
+      desc: p.description || "",
+      sizes: (p.variants || []).map(v => normalizeVariantValue(v.size)),
+      retail: p.retail_price || 0,
+      reseller: p.reseller_price || 0,
+      image_url: p.image_url || null,
+      moq: p.reseller_moq || 1,
+      variant_type: p.variant_type || "shoe_size"
+    };
   });
+
   buildPacksFromProducts();
-renderPacks(); // ou la fonction qui refresh l'onglet revendeur
 }
 
+function buildPacksFromProducts() {
+  packs = products
+    .filter(p => {
+      const hasResellerPrice = Number(p.reseller_price || p.reseller || 0) > 0;
+      const eligibleType = isPackEligible(p);
+      const hasVariants = Array.isArray(p.sizes) && p.sizes.length > 0;
+      return hasResellerPrice && eligibleType && hasVariants;
+    })
+    .map(p => {
+      const sku = p.sku || p.id;
+      const moq = Number(p.reseller_moq || p.moq || 1);
 
+      const sizes = Object.keys(stockMap[sku] || {})
+        .map(x => normalizeVariantValue(x))
+        .filter(Boolean)
+        .sort((a,b)=>String(a).localeCompare(String(b), "fr", {numeric:true}));
+
+      const dist = {};
+      sizes.forEach(s => (dist[s] = 0));
+
+      const available = sizes.filter(s => (stockMap[sku]?.[s] || 0) > 0);
+      const useSizes = available.length ? available : sizes;
+
+      if (useSizes.length) {
+        let left = moq;
+        let i = 0;
+        while (left > 0) {
+          dist[useSizes[i % useSizes.length]] += 1;
+          left--;
+          i++;
+        }
+      }
+
+      const resellerUnit = Number(p.reseller_price || p.reseller || 0);
+      const packPrice = resellerUnit * moq;
+      const variantLabel = getVariantLabel(p);
+
+      return {
+        id: `PK-${sku}`,
+        sku,
+        title: `Pack ${p.name} (${moq} unités)`,
+        moq,
+        packPrice,
+        defaultDist: dist,
+        image_url: p.image_url,
+        variant_type: p.variant_type || "shoe_size",
+        variant_label: variantLabel,
+      };
+    });
+}
 
   let packs = [];
   async function loadPacksFromApi(){
@@ -586,7 +646,8 @@ function syncRoleUI(){
   function getStock(){ try{ return JSON.parse(localStorage.getItem(LS.STOCK) || "{}"); }catch(e){ return {}; } }
   function setStock(stock){ localStorage.setItem(LS.STOCK, JSON.stringify(stock)); }
   function stockOf(sku, size){
-  return Number(stockMap?.[sku]?.[size] ?? 0);
+  const key = normalizeVariantValue(size);
+  return Number(stockMap?.[sku]?.[key] ?? 0);
 }
 
   function totalStockOfSku(sku){
@@ -595,16 +656,25 @@ function syncRoleUI(){
 }
 
   function adjustStock(sku, size, delta){
+  const key = normalizeVariantValue(size);
   stockMap[sku] = stockMap[sku] || {};
-  const cur = Number(stockMap[sku][size] ?? 0);
-  stockMap[sku][size] = Math.max(0, cur + delta);
+  const cur = Number(stockMap[sku][key] ?? 0);
+  stockMap[sku][key] = Math.max(0, cur + delta);
 }
 
   function validateStock(sku, size, qty){
-    const available = stockOf(sku, size);
-    if(qty > available) return {ok:false, msg:`Stock insuffisant pour ${sku} taille ${size}. Dispo: ${available}`};
-    return {ok:true};
+  const option = normalizeVariantValue(size);
+  const available = stockOf(sku, option);
+
+  if(qty > available){
+    return {
+      ok:false,
+      msg:`Stock insuffisant pour ${sku} option ${option}. Dispo: ${available}`
+    };
   }
+
+  return {ok:true};
+}
 
   function initCityQuarter(){
     const citySel = byId("cCity");
@@ -690,7 +760,7 @@ function syncRoleUI(){
     const reloaded = items.map(it => ({
       sku: it.sku,
       name: it.name,
-      size: Number(it.size),
+      size: normalizeVariantValue(it.size),
       qty: Number(it.qty),
       unit_price: Number(it.unit_price || 0),
       source: "reorder"
@@ -1016,7 +1086,7 @@ async function openResellerOrderDetail(orderNo){
           <div class="orderItemRow">
             <div>
               <div class="orderItemName">${it.name}</div>
-              <div class="orderItemMeta">${it.sku} • Option${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
+              <div class="orderItemMeta">${it.sku} • Option ${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
             </div>
             <div class="orderItemTotal">${money(it.line_total)}</div>
           </div>
@@ -1173,7 +1243,7 @@ function renderResellerSummary(list){
     `;
 
     byId("pdAddBtn")?.addEventListener("click", ()=>{
-      const size = parseInt(byId("pdSize").value, 10);
+      const size = normalizeVariantValue(byId("pdSize").value);
       const qty = parseInt(byId("pdQty").value, 10) || 1;
       if(mode==="reseller" && qty < p.moq){ alert(`MOQ revendeur = ${p.moq}`); return; }
       const v = validateStock(p.id, size, qty);
@@ -1183,21 +1253,31 @@ function renderResellerSummary(list){
   }
 
   function quickAdd(sku){
-    const p = getProduct(sku);
-    const size = p.sizes[Math.floor(p.sizes.length/2)];
-    const qty = (mode==="reseller" ? p.moq : 1);
-    const v = validateStock(sku, size, qty);
-    if(!v.ok){ alert(v.msg); return; }
-    addToCart(sku, size, qty, "QUICK");
+  const p = getProduct(sku);
+  if(!p || !Array.isArray(p.sizes) || !p.sizes.length){
+    alert("Ce produit n'a aucune option disponible.");
+    return;
   }
 
+  const size = normalizeVariantValue(p.sizes[Math.floor(p.sizes.length / 2)]);
+  const qty = (mode === "reseller" ? p.moq : 1);
+
+  const v = validateStock(sku, size, qty);
+  if(!v.ok){ alert(v.msg); return; }
+
+  addToCart(sku, size, qty, "QUICK");
+}
+
   function addToCart(sku, size, qty, source){
-    const key = `${sku}__${size}__${source}`;
-    const existing = cart.find(x => `${x.sku}__${x.size}__${x.source}` === key);
-    if(existing) existing.qty += qty;
-    else cart.push({sku, size, qty, source});
-    renderCart();
-  }
+  const option = normalizeVariantValue(size);
+  const key = `${sku}__${option}__${source}`;
+  const existing = cart.find(x => `${x.sku}__${x.size}__${x.source}` === key);
+
+  if(existing) existing.qty += qty;
+  else cart.push({sku, size: option, qty, source});
+
+  renderCart();
+}
   function updateQty(idx, delta){
     const item = cart[idx];
     const next = Math.max(1, item.qty + delta);
@@ -1538,13 +1618,7 @@ async function renderTrackingFromApi(orderNo){
 
 
   function getCurrentVariantStock(sku, size){
-  const product = getProduct(sku);
-  if(!product || !Array.isArray(product.variants)) return null;
-
-  const v = product.variants.find(x => Number(x.size) === Number(size));
-  if(!v) return null;
-
-  return Number(v.stock_qty ?? v.stock ?? 0);
+  return stockOf(sku, normalizeVariantValue(size));
 }
 
 function validateReorderCart(cartItems){
@@ -1553,7 +1627,7 @@ function validateReorderCart(cartItems){
 
   for(const item of cartItems){
     const sku = item.sku;
-    const size = Number(item.size);
+    const size = normalizeVariantValue(item.size);
     const qty = Number(item.qty || 0);
     const product = getProduct(sku);
 
@@ -1564,7 +1638,7 @@ function validateReorderCart(cartItems){
     } else {
       const check = validateStock(sku, size, qty);
       if(!check.ok){
-        issue = check.msg || `Taille ${size} indisponible`;
+        issue = check.msg || `Option ${size} indisponible`;
       }
     }
 
@@ -1606,65 +1680,24 @@ function validateReorderCart(cartItems){
     alert("Reset OK.");
   }
 
-  function buildPacksFromProducts() {
-  // produits -> packs/cartons
-  packs = products
-    .filter(p => Number(p.reseller_price || p.reseller || 0) > 0) // garde ceux vendables en revendeur
-    .map(p => {
-      const sku = p.sku || p.id; // selon ton API
-      const moq = Number(p.reseller_moq || p.moq || 1);
-
-      // tailles dispo pour ce produit (stockMap doit être déjà rempli)
-      const sizes = Object.keys(stockMap[sku] || {})
-        .map(x => parseInt(x, 10))
-        .filter(n => !Number.isNaN(n))
-        .sort((a, b) => a - b);
-
-      // distribution par défaut: répartir MOQ sur tailles dispo
-      const dist = {};
-      sizes.forEach(s => (dist[s] = 0));
-
-      const available = sizes.filter(s => (stockMap[sku]?.[s] || 0) > 0);
-      const useSizes = available.length ? available : sizes;
-
-      if (useSizes.length) {
-        let left = moq;
-        let i = 0;
-        while (left > 0) {
-          dist[useSizes[i % useSizes.length]] += 1;
-          left--;
-          i++;
-        }
-      }
-
-      const resellerUnit = Number(p.reseller_price || p.reseller || 0);
-      const packPrice = resellerUnit * moq;
-
-      return {
-        id: `PK-${sku}`,
-        sku,
-        title: `Carton ${p.name} (${moq} paires)`,
-        moq,
-        packPrice,
-        defaultDist: dist,
-        image_url: p.image_url,
-      };
-    });
-}
 
 
   function renderPacks(){
     const grid = byId("packsGrid");
     if(!grid) return;
     grid.innerHTML = "";
+    if(!packs.length){
+      grid.innerHTML = `<div class="muted">Aucun pack disponible pour le moment.</div>`;
+      return;
+    }
     packs.forEach(pk=>{
       const p = getProduct(pk.sku);
-      const sizes = Object.keys(pk.defaultDist).map(x=>parseInt(x,10)).sort((a,b)=>a-b);
+      const sizes = Object.keys(pk.defaultDist);
 
       const distInputs = sizes.map(s=>{
         return `
           <div class="distCell">
-            <strong>T${s}</strong>
+            <strong>${pk.variant_label} ${s}</strong>
             <div class="mini">Stock: ${stockOf(pk.sku, s)}</div>
             <input class="text" type="number" min="0" value="${pk.defaultDist[s]}" data-pack="${pk.id}" data-size="${s}" />
           </div>
@@ -1686,7 +1719,7 @@ function validateReorderCart(cartItems){
           <button class="btn primary" data-addpack="${pk.id}">➕ Ajouter ce pack</button>
           <button class="btn" data-resetpack="${pk.id}">↩️ Reset repartition</button>
         </div>
-        <div class="hintline">Permission : seulement revendeur. MOQ verifie avant ajout.</div>
+        <div class="hintline">Permission : seulement revendeur. MOQ vérifié avant ajout. Répartition par ${pk.variant_label.toLowerCase()}.</div>
       `;
       grid.appendChild(card);
     });
@@ -1698,7 +1731,7 @@ function validateReorderCart(cartItems){
   function resetPackDist(packId){
     const pk = packs.find(x=>x.id===packId);
     document.querySelectorAll(`input[data-pack="${packId}"]`).forEach(inp=>{
-      const size = parseInt(inp.getAttribute("data-size"),10);
+      const size = normalizeVariantValue(inp.getAttribute("data-size"));
       inp.value = pk.defaultDist[size] ?? 0;
     });
   }
@@ -1707,7 +1740,7 @@ function validateReorderCart(cartItems){
     const inputs = document.querySelectorAll(`input[data-pack="${packId}"]`);
     const dist = {};
     inputs.forEach(inp=>{
-      const size = parseInt(inp.getAttribute("data-size"),10);
+      const size = normalizeVariantValue(inp.getAttribute("data-size"));
       dist[size] = Math.max(0, parseInt(inp.value,10) || 0);
     });
     const total = Object.values(dist).reduce((a,b)=>a+b,0);
@@ -1720,18 +1753,19 @@ function validateReorderCart(cartItems){
     const {dist, total, sku} = readPackDist(packId);
     if(total<=0){ alert("Distribution vide."); return; }
     for(const sStr in dist){
-      const size = parseInt(sStr,10);
+      const size = normalizeVariantValue(sStr);
       const qty = dist[size];
-      if(qty<=0) continue;
+      if(qty <= 0) continue;
+
       const v = validateStock(sku, size, qty);
       if(!v.ok){ alert(v.msg); return; }
     }
     const p = getProduct(sku);
     if(total < p.moq){ alert(`MOQ non atteint pour ${sku}: minimum ${p.moq}`); return; }
     for(const sStr in dist){
-      const size = parseInt(sStr,10);
+      const size = normalizeVariantValue(sStr);
       const qty = dist[size];
-      if(qty<=0) continue;
+      if(qty <= 0) continue;
       addToCart(sku, size, qty, "PACK:"+packId);
     }
     alert("Pack ajoute ✅");
@@ -1766,13 +1800,13 @@ function validateReorderCart(cartItems){
 
   tbody.innerHTML = (data.results || []).map(p=>{
     const sizes = p.sizes || {};
-    const sizeChips = Object.keys(sizes).sort((a,b)=>Number(a)-Number(b)).map(s=>{
+    const sizeChips = Object.keys(sizes).sort((a,b)=>String(a).localeCompare(String(b), "fr", {numeric:true})).map(s=>{
       const qty = sizes[s];
       const low = qty <= 10;
       return `<span class="pill ${low ? "dangerPill" : ""}">${s}: ${qty}</span>`;
     }).join(" ");
 
-    const actions = Object.keys(sizes).sort((a,b)=>Number(a)-Number(b)).map(s=>`
+    const actions = Object.keys(sizes).sort((a,b)=>String(a).localeCompare(String(b), "fr", {numeric:true})).map(s=>`
       <div style="display:flex; gap:6px; align-items:center; margin:4px 0;">
         <span class="muted" style="min-width:48px">${s}</span>
         <button class="btn small" data-action="stockAdj" data-sku="${p.sku}" data-size="${s}" data-delta="1">+1</button>
@@ -2144,7 +2178,8 @@ async function renderDashboard(){
       const sizesHtml = p.sizes.map(s=>{
         const st = stockOf(p.id, s);
         const cls = st<=0 ? "bad" : (st<=2 ? "warn" : "ok");
-        return `<span class="statusPill ${cls}">T${s}:${st}</span>`;
+        const label = getVariantLabel(p);
+        return `<span class="statusPill ${cls}">${label} ${s}: ${st}</span>`;
       }).join(" ");
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -2153,8 +2188,8 @@ async function renderDashboard(){
         <td>${sizesHtml}</td>
         <td>
           <div class="hero-row">
-            <button class="btn small" data-plus="${p.id}">+1 toutes tailles</button>
-            <button class="btn small danger" data-minus="${p.id}">-1 toutes tailles</button>
+            <button class="btn small" data-plus="${p.id}">+1 toutes options</button>
+            <button class="btn small danger" data-minus="${p.id}">-1 toutes options</button>
           </div>
         </td>
       `;

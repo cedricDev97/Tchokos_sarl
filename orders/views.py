@@ -412,29 +412,52 @@ def admin_inventory_api(request):
 @user_passes_test(can_manage_inventory)
 @require_POST
 def admin_adjust_stock_api(request):
-    payload = json.loads(request.body.decode("utf-8"))
-    sku = payload.get("sku")
-    size = int(payload.get("size"))
-    delta = int(payload.get("delta"))
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "JSON invalide."}, status=400)
+
+    sku = str(payload.get("sku") or "").strip()
+    size = str(payload.get("size") or "").strip()
+
+    try:
+        delta = int(payload.get("delta") or 0)
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "Delta invalide."}, status=400)
+
+    if not sku or not size:
+        return JsonResponse({"ok": False, "error": "SKU ou option manquante."}, status=400)
 
     if delta not in (-1, 1, 5, -5):
         return JsonResponse({"ok": False, "error": "Delta invalide."}, status=400)
 
-    from catalog.models import Variant
     with transaction.atomic():
-        v = (Variant.objects
-             .select_for_update()
-             .select_related("product", "size")
-             .get(product__sku=sku, size__label=size))
+        try:
+            v = (
+                Variant.objects
+                .select_for_update()
+                .select_related("product", "size")
+                .get(product__sku=sku, size__label=size)
+            )
+        except Variant.DoesNotExist:
+            return JsonResponse(
+                {"ok": False, "error": f"Variante introuvable: {sku} option {size}"},
+                status=404
+            )
 
-        new_qty = v.stock_qty + delta
+        new_qty = int(v.stock_qty or 0) + delta
         if new_qty < 0:
             return JsonResponse({"ok": False, "error": "Stock ne peut pas être négatif."}, status=400)
 
         v.stock_qty = new_qty
         v.save(update_fields=["stock_qty"])
 
-    return JsonResponse({"ok": True, "sku": sku, "size": size, "stock_qty": new_qty})
+    return JsonResponse({
+        "ok": True,
+        "sku": sku,
+        "size": size,
+        "stock_qty": new_qty
+    })
 
 
 '''def get_role(user):

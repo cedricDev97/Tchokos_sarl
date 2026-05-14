@@ -16,6 +16,7 @@ def products_api(request):
             "reseller_price": p.reseller_price,
             "reseller_moq": p.reseller_moq,
             "image_url" : request.build_absolute_uri(p.image.url) if p.image else None,
+            "variant_type": p.variant_type,
 
             "variants": [
                 {"size": v.size.label, "stock_qty": v.stock_qty}
