@@ -16,6 +16,7 @@ from .models import Order, OrderItem
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
+import uuid
 
 from django.contrib.auth.decorators import user_passes_test
 from accounts.permissions import (
@@ -50,7 +51,7 @@ def is_reseller(user):
     return user.is_authenticated and user.groups.filter(name="reseller").exists()
 
 def gen_order_no():
-    return "TK" + str(random.randint(100000, 999999))
+    return "TK" + uuid.uuid4().hex[:8].upper()
 
 def is_reseller(user):
     return user.is_authenticated and user.groups.filter(name="reseller").exists()
@@ -62,7 +63,7 @@ import json
 @require_POST
 def checkout_api(request):
     payload = json.loads(request.body.decode("utf-8") or "{}")
-    print("CHECKOUT PAYLOAD =", payload)
+    
 
     customer = payload.get("customer") or {}
     items = payload.get("items") or []
@@ -111,7 +112,6 @@ def checkout_api(request):
             except (TypeError, ValueError):
                 return JsonResponse({"ok": False, "error": "Item invalide (option/qty)."}, status=400)
 
-            print("CHECKOUT ITEM =", {"sku": sku, "size": size, "qty": qty})
 
             if not sku or not size or qty <= 0:
                 return JsonResponse({"ok": False, "error": "Item invalide (option/qty)."}, status=400)
