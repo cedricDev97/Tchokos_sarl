@@ -1384,3 +1384,1102 @@ a{ color: inherit !important; }
 .resellerTabPage{
   display:block;
 }
+
+.productNoImage{
+  width:48px;
+  height:48px;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  border:1px dashed rgba(15,23,42,.18);
+  color:#98a2b3;
+  background:rgba(15,23,42,.03);
+}
+
+.productEditorCard{
+  width:min(920px, 96vw);
+  max-height:90vh;
+  overflow:auto;
+}
+
+.productEditorGrid{
+  grid-template-columns: 1fr 1fr;
+}
+
+.productActiveLine{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+  color:#344054;
+  font-weight:800;
+}
+
+.productActiveLine input{
+  width:16px;
+  height:16px;
+}
+
+#productEditorNote{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(239,68,68,.10);
+  border:1px solid rgba(239,68,68,.25);
+  color:#991b1b;
+  font-size:12px;
+  font-weight:700;
+}
+
+@media (max-width: 760px){
+  .productEditorGrid{
+    grid-template-columns:1fr;
+  }
+}
+
+.adminSectionTabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+
+.adminSectionTab{
+  border:1px solid rgba(15,23,42,.12);
+  background:#fff;
+  color:#344054;
+  border-radius:999px;
+  padding:9px 13px;
+  font-weight:900;
+  font-size:13px;
+  cursor:pointer;
+  box-shadow:0 6px 18px rgba(15,23,42,.06);
+}
+
+.adminSectionTab:hover{
+  transform:translateY(-1px);
+}
+
+.adminSectionTab.active{
+  background:#111827;
+  color:#fff;
+  border-color:#111827;
+}
+
+@media (max-width:760px){
+  .adminSectionTabs{
+    gap:6px;
+  }
+
+  .adminSectionTab{
+    font-size:12px;
+    padding:8px 10px;
+  }
+}
+
+.tablePager{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  padding:12px 14px 0;
+  border-top:1px solid rgba(15,23,42,.06);
+  margin-top:10px;
+}
+
+.tablePagerInfo{
+  font-size:13px;
+  font-weight:900;
+  color:#344054;
+  min-width:110px;
+  text-align:center;
+}
+
+.tablePager .btn[disabled]{
+  opacity:.45;
+  cursor:not-allowed;
+  transform:none;
+}
+
+@media (max-width:760px){
+  .tablePager{
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+}
+
+.productImageEditor{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.productImagePreview{
+  width:120px;
+  height:120px;
+  border-radius:16px;
+  border:1px dashed rgba(15,23,42,.22);
+  background:#f8fafc;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+  color:#667085;
+  font-size:12px;
+  font-weight:800;
+  text-align:center;
+  padding:8px;
+}
+
+.productImagePreview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.productImageControls{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+@media (max-width:760px){
+  .productImageEditor{
+    flex-direction:column;
+  }
+
+  .productImagePreview{
+    width:100%;
+    height:180px;
+  }
+}
+
+.productTechHelper{
+  margin-top:8px;
+  padding:10px;
+  border:1px dashed rgba(15,23,42,.14);
+  border-radius:14px;
+  background:#f8fafc;
+}
+
+.productDescriptionBlock{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:10px;
+}
+
+.productTechCard{
+  border:1px solid rgba(15,23,42,.10);
+  background:#fff;
+  border-radius:16px;
+  padding:12px;
+}
+
+.productTechTitle{
+  font-weight:900;
+  font-size:13px;
+  margin-bottom:8px;
+  color:#101828;
+}
+
+.productTechList{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.productTechRow{
+  display:grid;
+  grid-template-columns:140px 1fr;
+  gap:8px;
+  font-size:13px;
+  line-height:1.45;
+  padding:6px 0;
+  border-bottom:1px dashed rgba(15,23,42,.08);
+}
+
+.productTechRow:last-child{
+  border-bottom:none;
+}
+
+.productTechLabel{
+  color:#667085;
+  font-weight:800;
+}
+
+.productTechValue{
+  color:#101828;
+  font-weight:700;
+}
+
+.productAdvantageItem{
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  font-size:13px;
+  line-height:1.5;
+  color:#101828;
+  font-weight:700;
+}
+
+.productAdvantageItem::before{
+  content:"✓";
+  font-weight:900;
+  color:#039855;
+}
+
+.productPlainDescription{
+  white-space:pre-line;
+  font-size:13px;
+  line-height:1.6;
+  color:#475467;
+}
+
+@media (max-width:640px){
+  .productTechRow{
+    grid-template-columns:1fr;
+    gap:2px;
+  }
+}
+
+/* Correction fiche produit : empêcher l'image de s'étirer avec la fiche technique */
+.productPage{
+  align-items:flex-start;
+}
+
+.bigImg{
+  align-self:flex-start;
+  height:auto !important;
+  min-height:0 !important;
+  aspect-ratio:1 / 1;
+  max-height:520px;
+  overflow:hidden;
+}
+
+.bigImg img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  display:block;
+}
+
+
+.catalogMetaLine{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:6px;
+}
+
+.catalogBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:11px;
+  font-weight:900;
+  border:1px solid rgba(15,23,42,.10);
+  background:#f8fafc;
+  color:#344054;
+}
+
+.catalogBadgeCategory{
+  background:#eef4ff;
+  color:#3538cd;
+  border-color:#c7d7fe;
+}
+
+.catalogBadgeSku{
+  background:#fff7ed;
+  color:#c2410c;
+  border-color:#fed7aa;
+}
+
+.catalogBadgeStockOk{
+  background:#ecfdf3;
+  color:#027a48;
+  border-color:#abefc6;
+}
+
+.catalogBadgeStockWarn{
+  background:#fffaeb;
+  color:#b54708;
+  border-color:#fedf89;
+}
+
+.catalogBadgeStockBad{
+  background:#fef3f2;
+  color:#b42318;
+  border-color:#fecdca;
+}
+
+.catalogPriceBlock{
+  text-align:right;
+  min-width:110px;
+}
+
+.catalogPriceBlock .now{
+  font-size:17px;
+  font-weight:950;
+}
+
+.catalogPriceBlock .hint{
+  font-size:11px;
+  color:#667085;
+  font-weight:800;
+}
+
+.catalogProductTitle{
+  min-width:0;
+}
+
+.catalogProductTitle h4{
+  font-size:17px !important;
+  line-height:1.15 !important;
+  font-weight:950 !important;
+  margin:0 0 5px 0 !important;
+  color:#101828 !important;
+  height:40px !important;
+  max-height:40px !important;
+  overflow:hidden !important;
+}
+
+.catalogProductSub{
+  color:#667085;
+  font-size:12px;
+  line-height:1.4;
+  font-weight:700;
+}
+
+.catalogImageFallback{
+  width:100%;
+  height:100%;
+  border-radius:14px;
+  background:linear-gradient(135deg, #f2f4f7, #e4e7ec);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#667085;
+  font-size:38px;
+  font-weight:950;
+}
+
+.catalogActions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+
+.catalogActions .btn[disabled]{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+/* =========================
+   FIX 3A-5E : catalogue propre
+   ========================= */
+
+.products{
+  align-items:stretch;
+}
+
+.card{
+  border-radius:24px !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  min-height:0 !important;
+}
+
+.card .img{
+  height:165px !important;
+  min-height:165px !important;
+  background:#f8fafc !important;
+  border-bottom:1px solid rgba(15,23,42,.06) !important;
+  position:relative !important;
+  overflow:hidden !important;
+}
+
+.card .img img{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:contain !important;
+  background:#f8fafc !important;
+  border-radius:0 !important;
+}
+
+/* Le tag produit reste seul sur l'image */
+.card .img .tag{
+  position:absolute !important;
+  left:12px !important;
+  top:12px !important;
+  bottom:auto !important;
+  right:auto !important;
+  z-index:4 !important;
+  max-width:calc(100% - 24px) !important;
+  padding:7px 11px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.88) !important;
+  color:#101828 !important;
+  border:1px solid rgba(15,23,42,.08) !important;
+  box-shadow:0 8px 22px rgba(15,23,42,.10) !important;
+  font-size:12px !important;
+  font-weight:900 !important;
+  line-height:1 !important;
+}
+
+/* On neutralise les anciens badges stock sur image */
+.card .img .statusPill,
+.card .img .pill,
+.card .img .stockPill{
+  position:static !important;
+  display:none !important;
+}
+
+/* Si le nouveau JS met encore un badge stock dans l'image, on le cache */
+.card .img .catalogBadge{
+  display:none !important;
+}
+
+.card .content{
+  padding:16px !important;
+  gap:12px !important;
+  flex:1 !important;
+}
+
+.card .title{
+  display:grid !important;
+  grid-template-columns:1fr auto !important;
+  gap:12px !important;
+  align-items:start !important;
+}
+
+.catalogProductTitle h4,
+.card .title h4{
+  font-size:16px !important;
+  line-height:1.15 !important;
+  font-weight:950 !important;
+  letter-spacing:-.02em !important;
+  margin:0 0 4px 0 !important;
+  color:#101828 !important;
+}
+
+.catalogProductSub{
+  font-size:12px !important;
+  color:#667085 !important;
+  font-weight:850 !important;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+
+.catalogPriceBlock{
+  min-width:116px !important;
+  text-align:right !important;
+}
+
+.catalogPriceBlock .now{
+  font-size:20px !important;
+  line-height:1 !important;
+  font-weight:950 !important;
+  letter-spacing:-.03em !important;
+  color:#101828 !important;
+  white-space:nowrap !important;
+}
+
+.catalogPriceBlock .hint{
+  margin-top:4px !important;
+  font-size:12px !important;
+  color:#667085 !important;
+  font-weight:850 !important;
+}
+
+.catalogMetaLine{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:7px !important;
+  margin-top:10px !important;
+}
+
+.catalogBadge{
+  padding:7px 10px !important;
+  border-radius:999px !important;
+  font-size:12px !important;
+  font-weight:950 !important;
+  line-height:1 !important;
+  max-width:100% !important;
+  white-space:normal !important;
+  word-break:normal !important;
+}
+
+.catalogBadgeSku{
+  max-width:120px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+.catalogBadgeCategory{
+  background:#eef4ff !important;
+  color:#3538cd !important;
+  border-color:#b2ccff !important;
+}
+
+.catalogBadgeStockOk{
+  background:#ecfdf3 !important;
+  color:#027a48 !important;
+  border-color:#abefc6 !important;
+}
+
+.catalogBadgeStockWarn{
+  background:#fffaeb !important;
+  color:#b54708 !important;
+  border-color:#fedf89 !important;
+}
+
+.catalogBadgeStockBad{
+  background:#fef3f2 !important;
+  color:#b42318 !important;
+  border-color:#fecdca !important;
+}
+
+.card .catalogProductSub[style]{
+  margin-top:10px !important;
+  font-size:13px !important;
+  text-transform:none !important;
+  letter-spacing:0 !important;
+}
+
+.catalogActions{
+  margin-top:auto !important;
+  padding-top:12px !important;
+  display:flex !important;
+  gap:10px !important;
+  flex-wrap:nowrap !important;
+}
+
+.catalogActions .btn{
+  justify-content:center !important;
+  min-height:40px !important;
+  padding:9px 12px !important;
+  font-size:13px !important;
+  font-weight:950 !important;
+}
+
+.catalogActions .btn:first-child{
+  flex:1.1 !important;
+}
+
+.catalogActions .btn:last-child{
+  flex:.9 !important;
+}
+
+.catalogImageFallback{
+  border-radius:0 !important;
+  height:100% !important;
+}
+
+/* Responsive catalogue */
+@media (max-width:920px){
+  .card .img{
+    height:180px !important;
+    min-height:180px !important;
+  }
+}
+
+@media (max-width:520px){
+  .card .title{
+    grid-template-columns:1fr !important;
+  }
+
+  .catalogPriceBlock{
+    text-align:left !important;
+    min-width:0 !important;
+  }
+
+  .catalogActions{
+    flex-direction:column !important;
+  }
+
+  .catalogActions .btn{
+    width:100% !important;
+  }
+}
+
+/* =========================
+   FIX FINAL CATALOGUE CARTES
+   ========================= */
+
+.products{
+  align-items:start !important;
+}
+
+.card{
+  align-self:start !important;
+  min-height:0 !important;
+}
+
+.card .img,
+.catalogImageBox{
+  height:210px !important;
+  min-height:210px !important;
+  background:#f8fafc !important;
+  border-bottom:1px solid rgba(15,23,42,.06) !important;
+}
+
+.catalogProductImage{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:contain !important;
+  background:#f8fafc !important;
+  border-radius:0 !important;
+}
+
+.card .content{
+  min-height:0 !important;
+  padding:16px !important;
+  gap:12px !important;
+}
+
+.catalogTitleRow{
+  display:grid !important;
+  grid-template-columns:1fr auto !important;
+  gap:12px !important;
+  align-items:start !important;
+}
+
+.catalogProductTitle h4{
+  font-size:17px !important;
+  line-height:1.15 !important;
+  font-weight:950 !important;
+  margin:0 0 5px 0 !important;
+  color:#101828 !important;
+  overflow:hidden !important;
+}
+
+.catalogProductSub{
+  font-size:12px !important;
+  color:#667085 !important;
+  font-weight:900 !important;
+  text-transform:uppercase !important;
+  letter-spacing:.02em !important;
+}
+
+.catalogMetaLine{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:7px !important;
+  margin-top:12px !important;
+}
+
+.catalogBadge{
+  padding:7px 10px !important;
+  border-radius:999px !important;
+  font-size:12px !important;
+  font-weight:950 !important;
+  line-height:1 !important;
+}
+
+.catalogBadgeSku{
+  max-width:125px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+.catalogMoqLine{
+  margin-top:12px !important;
+  color:#667085 !important;
+  font-size:13px !important;
+  font-weight:850 !important;
+  line-height:1.35 !important;
+}
+
+.catalogPriceBlock{
+  min-width:120px !important;
+  text-align:right !important;
+}
+
+.catalogPriceBlock .now{
+  font-size:21px !important;
+  line-height:1 !important;
+  font-weight:950 !important;
+  letter-spacing:-.03em !important;
+  color:#101828 !important;
+  white-space:nowrap !important;
+}
+
+.catalogPriceBlock .hint{
+  margin-top:5px !important;
+  font-size:12px !important;
+  color:#667085 !important;
+  font-weight:850 !important;
+}
+
+.catalogActions{
+  margin-top:16px !important;
+  padding-top:0 !important;
+  display:flex !important;
+  gap:10px !important;
+  flex-wrap:nowrap !important;
+}
+
+.catalogActions .btn{
+  min-height:42px !important;
+  justify-content:center !important;
+  font-size:13px !important;
+  font-weight:950 !important;
+}
+
+.catalogActions .btn:first-child{
+  flex:1.1 !important;
+}
+
+.catalogActions .btn:last-child{
+  flex:.9 !important;
+}
+
+/* On force la disparition de tout ancien badge stock dans l'image */
+.card .img .catalogBadge{
+  display:none !important;
+}
+
+.card .img .statusPill,
+.card .img .pill,
+.card .img .stockPill{
+  display:none !important;
+}
+
+@media (max-width:520px){
+  .catalogTitleRow{
+    grid-template-columns:1fr !important;
+  }
+
+  .catalogPriceBlock{
+    text-align:left !important;
+    min-width:0 !important;
+  }
+
+  .catalogActions{
+    flex-direction:column !important;
+  }
+
+  .catalogActions .btn{
+    width:100% !important;
+  }
+}
+
+/* =========================
+   CATALOGUE PRO — VERSION COMPACTE
+   ========================= */
+
+.catalogCard{
+  border-radius:24px !important;
+  overflow:hidden !important;
+  background:#fff !important;
+  border:1px solid rgba(15,23,42,.08) !important;
+  box-shadow:0 12px 34px rgba(15,23,42,.07) !important;
+  display:flex !important;
+  flex-direction:column !important;
+  min-height:0 !important;
+}
+
+.catalogImageBox{
+  position:relative !important;
+  height:255px !important;
+  background:#f8fafc !important;
+  border-bottom:1px solid rgba(15,23,42,.06) !important;
+  overflow:hidden !important;
+}
+
+.catalogProductImage{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:center !important;
+  border-radius:0 !important;
+  background:#f8fafc !important;
+}
+
+.catalogTag{
+  position:absolute !important;
+  top:14px !important;
+  left:14px !important;
+  z-index:5 !important;
+  max-width:calc(100% - 28px) !important;
+  padding:8px 14px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.90) !important;
+  border:1px solid rgba(15,23,42,.08) !important;
+  box-shadow:0 10px 24px rgba(15,23,42,.12) !important;
+  color:#101828 !important;
+  font-size:13px !important;
+  font-weight:950 !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+.catalogBody{
+  padding:16px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:10px !important;
+}
+
+.catalogMainRow{
+  display:grid !important;
+  grid-template-columns:1fr auto !important;
+  gap:12px !important;
+  align-items:start !important;
+}
+
+.catalogInfo{
+  min-width:0 !important;
+}
+
+.catalogInfo h4{
+  margin:0 !important;
+  color:#101828 !important;
+  font-size:18px !important;
+  line-height:1.15 !important;
+  font-weight:950 !important;
+  letter-spacing:-.02em !important;
+  overflow:hidden !important;
+}
+
+.catalogBrand{
+  margin-top:5px !important;
+  color:#667085 !important;
+  font-size:13px !important;
+  font-weight:900 !important;
+  text-transform:uppercase !important;
+  letter-spacing:.03em !important;
+}
+
+.catalogPriceBlock{
+  min-width:112px !important;
+  text-align:right !important;
+}
+
+.catalogPriceBlock .now{
+  color:#101828 !important;
+  font-size:21px !important;
+  line-height:1 !important;
+  font-weight:950 !important;
+  letter-spacing:-.04em !important;
+  white-space:nowrap !important;
+}
+
+.catalogPriceBlock .hint{
+  margin-top:5px !important;
+  color:#667085 !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+}
+
+.catalogMetaText{
+  color:#667085 !important;
+  font-size:12px !important;
+  line-height:1.35 !important;
+  font-weight:800 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+.catalogStockLine{
+  display:flex !important;
+  align-items:center !important;
+  gap:7px !important;
+  color:#344054 !important;
+  font-size:13px !important;
+  font-weight:900 !important;
+  line-height:1.2 !important;
+}
+
+.catalogStockLine .stockDot{
+  width:8px !important;
+  height:8px !important;
+  border-radius:999px !important;
+  display:inline-block !important;
+  flex:0 0 auto !important;
+}
+
+.catalogStockLine.catalogBadgeStockOk{
+  color:#027a48 !important;
+}
+
+.catalogStockLine.catalogBadgeStockOk .stockDot{
+  background:#12b76a !important;
+}
+
+.catalogStockLine.catalogBadgeStockWarn{
+  color:#b54708 !important;
+}
+
+.catalogStockLine.catalogBadgeStockWarn .stockDot{
+  background:#f79009 !important;
+}
+
+.catalogStockLine.catalogBadgeStockBad{
+  color:#b42318 !important;
+}
+
+.catalogStockLine.catalogBadgeStockBad .stockDot{
+  background:#f04438 !important;
+}
+
+.catalogSeparator{
+  color:#98a2b3 !important;
+}
+
+.catalogActions{
+  margin-top:8px !important;
+  display:flex !important;
+  gap:10px !important;
+  flex-wrap:nowrap !important;
+}
+
+.catalogActions .btn{
+  min-height:42px !important;
+  justify-content:center !important;
+  font-size:13px !important;
+  font-weight:950 !important;
+  border-radius:999px !important;
+}
+
+.catalogActions .btn:first-child{
+  flex:1.1 !important;
+}
+
+.catalogActions .btn:last-child{
+  flex:.9 !important;
+}
+
+/* Neutraliser les anciens badges catalogue empilés */
+.catalogMetaLine,
+.catalogBadge,
+.catalogMoqLine{
+  display:none !important;
+}
+
+/* Neutraliser les anciennes règles image */
+.card .img .catalogBadge,
+.card .img .statusPill,
+.card .img .pill,
+.card .img .stockPill{
+  display:none !important;
+}
+
+@media (max-width:520px){
+  .catalogImageBox{
+    height:250px !important;
+  }
+
+  .catalogMainRow{
+    grid-template-columns:1fr !important;
+  }
+
+  .catalogPriceBlock{
+    text-align:left !important;
+    min-width:0 !important;
+  }
+
+  .catalogActions{
+    flex-direction:column !important;
+  }
+
+  .catalogActions .btn{
+    width:100% !important;
+  }
+}
+
+/* =========================
+   CATALOGUE PRO — HAUTEUR UNIFORME
+   ========================= */
+
+.products{
+  align-items:stretch !important;
+}
+
+.catalogCard{
+  height: 500px !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+.catalogImageBox{
+  height:235px !important;
+  min-height:235px !important;
+  max-height:235px !important;
+  flex:0 0 235px !important;
+}
+
+.catalogBody{
+  flex:1 !important;
+  min-height:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+.catalogMainRow{
+  min-height:58px !important;
+}
+
+.catalogInfo h4{
+  margin:0 !important;
+  color:#101828 !important;
+  font-size:18px !important;
+  line-height:1.15 !important;
+  font-weight:950 !important;
+  letter-spacing:-.02em !important;
+  height:42px !important;
+  max-height:42px !important;
+  overflow:hidden !important;
+}
+
+.catalogBrand{
+  min-height:16px !important;
+  max-height:16px !important;
+  overflow:hidden !important;
+  white-space:nowrap !important;
+  text-overflow:ellipsis !important;
+}
+
+.catalogMetaText{
+  min-height:18px !important;
+  max-height:18px !important;
+  overflow:hidden !important;
+  white-space:nowrap !important;
+  text-overflow:ellipsis !important;
+}
+
+.catalogStockLine{
+  min-height:18px !important;
+  max-height:18px !important;
+  overflow:hidden !important;
+  white-space:nowrap !important;
+}
+
+.catalogActions{
+  margin-top:auto !important;
+  min-height:44px !important;
+}
+
+.catalogActions .btn{
+  min-height:42px !important;
+}

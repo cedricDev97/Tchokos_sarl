@@ -410,6 +410,271 @@ const PAYMENT_META = {
   failed:  { label: "Paiement échoué", cls: "pill pill-failed" },
 };
 
+const PRODUCT_CATEGORIES = [
+  { value: "Chaussures", label: "Chaussures" },
+  { value: "Vêtements", label: "Vêtements" },
+  { value: "Sacs", label: "Sacs" },
+  { value: "Montres", label: "Montres" },
+  { value: "Accessoires", label: "Accessoires" },
+  { value: "Téléphones", label: "Téléphones" },
+  { value: "Électroménager", label: "Électroménager" },
+  { value: "Beauté", label: "Beauté" },
+  { value: "Maison", label: "Maison" },
+  { value: "Autres", label: "Autres" },
+];
+
+const PRODUCT_CATEGORY_ALIASES = {
+  "sneaker": "Chaussures",
+  "sneakers": "Chaussures",
+  "basket": "Chaussures",
+  "baskets": "Chaussures",
+  "chaussure": "Chaussures",
+  "chaussures": "Chaussures",
+  "sandale": "Chaussures",
+  "sandales": "Chaussures",
+  "sport": "Chaussures",
+
+  "vetement": "Vêtements",
+  "vêtement": "Vêtements",
+  "vetements": "Vêtements",
+  "vêtements": "Vêtements",
+  "habit": "Vêtements",
+  "habits": "Vêtements",
+  "tshirt": "Vêtements",
+  "t-shirt": "Vêtements",
+
+  "sac": "Sacs",
+  "sacs": "Sacs",
+
+  "montre": "Montres",
+  "montres": "Montres",
+  "watch": "Montres",
+  "watches": "Montres",
+
+  "accessoire": "Accessoires",
+  "accessoires": "Accessoires",
+
+  "telephone": "Téléphones",
+  "téléphone": "Téléphones",
+  "telephones": "Téléphones",
+  "téléphones": "Téléphones",
+  "smartphone": "Téléphones",
+  "smartphones": "Téléphones",
+
+  "electromenager": "Électroménager",
+  "électroménager": "Électroménager",
+  "frigo": "Électroménager",
+  "frigos": "Électroménager",
+  "refrigerateur": "Électroménager",
+  "réfrigérateur": "Électroménager",
+
+  "beaute": "Beauté",
+  "beauté": "Beauté",
+
+  "maison": "Maison",
+};
+
+const PRODUCT_CATEGORY_SKU_PREFIXES = {
+  "Chaussures": "CHA",
+  "Vêtements": "VET",
+  "Sacs": "SAC",
+  "Montres": "MON",
+  "Accessoires": "ACC",
+  "Téléphones": "TEL",
+  "Électroménager": "ELE",
+  "Beauté": "BEA",
+  "Maison": "MAI",
+  "Autres": "AUT",
+};
+
+const PRODUCT_VARIANT_TYPE_LABELS = {
+  shoe_size: "Pointure chaussure",
+  clothing_size: "Taille vêtement",
+  color: "Couleur",
+  capacity: "Capacité",
+  unique: "Unique",
+};
+
+const PRODUCT_CATEGORY_VARIANT_DEFAULTS = {
+  "Chaussures": "shoe_size",
+  "Vêtements": "clothing_size",
+  "Sacs": "color",
+  "Montres": "color",
+  "Accessoires": "color",
+  "Téléphones": "capacity",
+  "Électroménager": "capacity",
+  "Beauté": "unique",
+  "Maison": "unique",
+  "Autres": "unique",
+};
+
+const PRODUCT_VARIANT_EXAMPLES = {
+  shoe_size: "39=5\n40=8\n41=3",
+  clothing_size: "S=4\nM=8\nL=6\nXL=3",
+  color: "Noir=5\nArgent=3\nOr=2",
+  capacity: "128GB=4\n256GB=2",
+  unique: "Unique=10",
+};
+
+const PRODUCT_CATEGORY_VARIANT_EXAMPLES = {
+  "Chaussures": "39=5\n40=8\n41=3",
+  "Vêtements": "S=4\nM=8\nL=6\nXL=3",
+  "Sacs": "Noir=5\nMarron=3\nBeige=2",
+  "Montres": "Noir=5\nArgent=3\nOr=2",
+  "Accessoires": "Noir=5\nBlanc=4\nRouge=2",
+  "Téléphones": "128GB=4\n256GB=2\n512GB=1",
+  "Électroménager": "200L=3\n300L=2\n400L=1",
+  "Beauté": "Unique=10",
+  "Maison": "Unique=10",
+  "Autres": "Unique=10",
+};
+
+const PRODUCT_TECHNICAL_TEMPLATES = {
+  "Chaussures": `Fiche technique :
+- Type : 
+- Matière : 
+- Semelle : 
+- Fermeture : lacets / scratch / autre
+- Usage : ville / sport / sortie
+- Genre : homme / femme / mixte
+- État : neuf
+- Conseil taille : 
+
+Avantages :
+- Confortable
+- Bonne finition
+- Style moderne`,
+
+  "Vêtements": `Fiche technique :
+- Type : t-shirt / chemise / pantalon / ensemble / robe
+- Matière : 
+- Coupe : slim / regular / oversize
+- Genre : homme / femme / mixte
+- Saison : 
+- Entretien : lavage doux recommandé
+- État : neuf
+
+Avantages :
+- Confortable
+- Facile à porter
+- Bon rapport qualité/prix`,
+
+  "Sacs": `Fiche technique :
+- Type : sac à main / sac à dos / sacoche / valise
+- Matière : 
+- Dimensions : 
+- Nombre de compartiments : 
+- Fermeture : zip / bouton / autre
+- Usage : quotidien / voyage / travail
+- État : neuf
+
+Avantages :
+- Pratique
+- Bonne capacité
+- Design élégant`,
+
+  "Montres": `Fiche technique :
+- Type : montre classique / connectée / sport
+- Matière bracelet : 
+- Couleur : 
+- Type d'affichage : analogique / digital
+- Résistance à l'eau : 
+- Batterie / pile : 
+- État : neuf
+- Garantie : 
+
+Avantages :
+- Design élégant
+- Facile à porter
+- Bon choix pour cadeau`,
+
+  "Accessoires": `Fiche technique :
+- Type d'accessoire : 
+- Matière : 
+- Couleur : 
+- Dimensions : 
+- Compatibilité : 
+- État : neuf
+
+Avantages :
+- Pratique
+- Léger
+- Facile à utiliser`,
+
+  "Téléphones": `Fiche technique :
+- Marque : 
+- Modèle : 
+- Stockage : 
+- RAM : 
+- Taille écran : 
+- Caméra : 
+- Batterie : 
+- Réseau : 4G / 5G
+- État : neuf / occasion
+- Accessoires inclus : chargeur / câble / écouteurs
+- Garantie : 
+
+Avantages :
+- Bonne autonomie
+- Fluide pour usage quotidien
+- Bon rapport qualité/prix`,
+
+  "Électroménager": `Fiche technique :
+- Type : frigo / congélateur / machine à laver / climatiseur / autre
+- Marque : 
+- Modèle : 
+- Capacité : 
+- Puissance : 
+- Consommation énergétique : 
+- Dimensions : 
+- État : neuf / occasion
+- Garantie : 
+
+Avantages :
+- Pratique pour usage quotidien
+- Bonne capacité
+- Installation simple`,
+
+  "Beauté": `Fiche technique :
+- Type de produit : 
+- Marque : 
+- Contenance : 
+- Type de peau / cheveux : 
+- Mode d'utilisation : 
+- Précautions : 
+- État : neuf
+
+Avantages :
+- Facile à utiliser
+- Adapté à un usage quotidien
+- Bon choix pour soin personnel`,
+
+  "Maison": `Fiche technique :
+- Type d'article : 
+- Matière : 
+- Dimensions : 
+- Couleur : 
+- Usage : salon / cuisine / chambre / bureau
+- État : neuf
+
+Avantages :
+- Pratique
+- Décoratif
+- Facile à installer`,
+
+  "Autres": `Fiche technique :
+- Type de produit : 
+- Marque : 
+- Modèle : 
+- Caractéristiques principales : 
+- État : neuf
+- Garantie : 
+
+Avantages :
+- Pratique
+- Bon rapport qualité/prix`
+};
+
 function paymentBadge(status){
   const s = (status || "").toLowerCase();
   const m = PAYMENT_META[s] || { label: s || "—", cls: "pill" };
@@ -422,6 +687,268 @@ function statusBadge(status){
   return `<span class="${m.cls}">${m.label}</span>`;
 }
 
+function normalizeProductCategory(value){
+  const raw = String(value || "").trim();
+
+  if(!raw){
+    return "Autres";
+  }
+
+  const exact = PRODUCT_CATEGORIES.find(c => {
+    return c.value.toLowerCase() === raw.toLowerCase();
+  });
+
+  if(exact){
+    return exact.value;
+  }
+
+  const key = raw.toLowerCase();
+
+  if(PRODUCT_CATEGORY_ALIASES[key]){
+    return PRODUCT_CATEGORY_ALIASES[key];
+  }
+
+  return "Autres";
+}
+
+function populateProductCategorySelect(selectId, options = {}){
+  const select = byId(selectId);
+
+  if(!select){
+    return;
+  }
+
+  const includeAll = !!options.includeAll;
+
+  select.innerHTML = "";
+
+  if(includeAll){
+    const opt = document.createElement("option");
+    opt.value = "ALL";
+    opt.textContent = "Catégorie : Toutes";
+    select.appendChild(opt);
+  }
+
+  PRODUCT_CATEGORIES.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat.value;
+    opt.textContent = cat.label;
+    select.appendChild(opt);
+  });
+}
+
+function initCategoryControls(){
+  populateProductCategorySelect("catFilter", {
+    includeAll: true
+  });
+
+  populateProductCategorySelect("peCategory", {
+    includeAll: false
+  });
+}
+
+function getSkuPrefixForCategory(category){
+  const normalized = normalizeProductCategory(category);
+  return PRODUCT_CATEGORY_SKU_PREFIXES[normalized] || "AUT";
+}
+
+function extractSkuNumber(sku, prefix){
+  const value = String(sku || "").trim().toUpperCase();
+  const expectedStart = `TK-${prefix}-`;
+
+  if(!value.startsWith(expectedStart)){
+    return null;
+  }
+
+  const rawNumber = value.slice(expectedStart.length);
+  const number = Number.parseInt(rawNumber, 10);
+
+  if(Number.isNaN(number)){
+    return null;
+  }
+
+  return number;
+}
+
+function generateNextSkuForCategory(category){
+  const normalized = normalizeProductCategory(category);
+  const prefix = getSkuPrefixForCategory(normalized);
+
+  const products = Array.isArray(adminProductsCache) ? adminProductsCache : [];
+
+  let maxNumber = 0;
+
+  products.forEach(p => {
+    const n = extractSkuNumber(p.sku, prefix);
+
+    if(n !== null && n > maxNumber){
+      maxNumber = n;
+    }
+  });
+
+  const nextNumber = maxNumber + 1;
+  const padded = String(nextNumber).padStart(4, "0");
+
+  return `TK-${prefix}-${padded}`;
+}
+
+function isEditingProduct(){
+  return !!String(byId("peOldSku")?.value || "").trim();
+}
+
+function updateSkuHint(){
+  const hint = byId("peSkuHint");
+
+  if(!hint){
+    return;
+  }
+
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  const prefix = getSkuPrefixForCategory(category);
+  const suggested = generateNextSkuForCategory(category);
+
+  if(isEditingProduct()){
+    hint.textContent = `Modification produit : le SKU existant est conservé. Préfixe catégorie : TK-${prefix}.`;
+    return;
+  }
+
+  hint.textContent = `Suggestion pour ${category} : ${suggested}`;
+}
+
+function applyGeneratedSku(force = false){
+  const skuInput = byId("peSku");
+
+  if(!skuInput){
+    return;
+  }
+
+  const currentSku = String(skuInput.value || "").trim();
+  const isAutoSku = skuInput.dataset.autoSku === "1";
+
+  // En modification, on n'écrase jamais automatiquement le SKU.
+  // Le bouton "Générer" peut quand même forcer si nécessaire.
+  if(isEditingProduct() && !force){
+    updateSkuHint();
+    return;
+  }
+
+  // En création :
+  // - si le SKU est vide → on génère
+  // - si le SKU est auto → on peut régénérer selon la catégorie
+  // - si le SKU a été saisi manuellement → on ne l'écrase pas
+  if(currentSku && !isAutoSku && !force){
+    updateSkuHint();
+    return;
+  }
+
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  skuInput.value = generateNextSkuForCategory(category);
+  skuInput.dataset.autoSku = "1";
+
+  updateSkuHint();
+}
+
+function getTechnicalTemplateForCategory(category){
+  const normalized = normalizeProductCategory(category);
+  return PRODUCT_TECHNICAL_TEMPLATES[normalized] || PRODUCT_TECHNICAL_TEMPLATES["Autres"];
+}
+
+function updateTechnicalTemplateHint(){
+  const hint = byId("peTechTemplateHint");
+
+  if(!hint){
+    return;
+  }
+
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  hint.textContent = `Modèle disponible pour : ${category}. Tu peux l'ajouter à la description ou remplacer la description actuelle.`;
+}
+
+function fillTechnicalTemplate(options = {}){
+  const replace = !!options.replace;
+  const desc = byId("peDescription");
+
+  if(!desc){
+    return;
+  }
+
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  const template = getTechnicalTemplateForCategory(category);
+  const current = String(desc.value || "").trim();
+
+  if(replace || !current){
+    desc.value = template;
+  }else{
+    desc.value = `${current}
+
+---
+
+${template}`;
+  }
+
+  updateTechnicalTemplateHint();
+}
+
+function getRecommendedVariantTypeForCategory(category){
+  const normalized = normalizeProductCategory(category);
+
+  return PRODUCT_CATEGORY_VARIANT_DEFAULTS[normalized] || "unique";
+}
+
+function getVariantTypeLabel(type){
+  return PRODUCT_VARIANT_TYPE_LABELS[type] || "Unique";
+}
+
+function getVariantExampleForCurrentEditor(){
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  const variantType = byId("peVariantType")?.value || getRecommendedVariantTypeForCategory(category);
+
+  return PRODUCT_CATEGORY_VARIANT_EXAMPLES[category]
+    || PRODUCT_VARIANT_EXAMPLES[variantType]
+    || "Unique=10";
+}
+
+function updateProductVariantHelper(){
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  const selectedType = byId("peVariantType")?.value || "unique";
+  const recommendedType = getRecommendedVariantTypeForCategory(category);
+  const recommendedLabel = getVariantTypeLabel(recommendedType);
+  const selectedLabel = getVariantTypeLabel(selectedType);
+  const example = getVariantExampleForCurrentEditor();
+
+  const hint = byId("peVariantTypeHint");
+
+  if(hint){
+    if(selectedType === recommendedType){
+      hint.textContent = `Suggestion OK : ${category} utilise généralement "${recommendedLabel}". Exemple : ${example.replaceAll("\n", " / ")}`;
+    }else{
+      hint.textContent = `Attention : pour "${category}", le type conseillé est "${recommendedLabel}". Type actuel : "${selectedLabel}".`;
+    }
+  }
+
+  const variantsInput = byId("peVariants");
+
+  if(variantsInput && !variantsInput.value.trim()){
+    variantsInput.placeholder = example;
+  }
+}
+
+function applyRecommendedVariantType(){
+  const category = normalizeProductCategory(byId("peCategory")?.value || "");
+  const recommendedType = getRecommendedVariantTypeForCategory(category);
+
+  if(byId("peVariantType")){
+    byId("peVariantType").value = recommendedType;
+  }
+
+  const variantsInput = byId("peVariants");
+
+  if(variantsInput && !variantsInput.value.trim()){
+    variantsInput.placeholder = getVariantExampleForCurrentEditor();
+  }
+
+  updateProductVariantHelper();
+}
 
   let products = [];
   let stockMap = {}; 
@@ -443,8 +970,7 @@ function statusBadge(status){
       id: p.sku,
       brand: p.brand || "",
       name: p.name || "",
-      cat: p.category || "",
-      tag: p.tag || "",
+      cat: normalizeProductCategory(p.category || ""),      tag: p.tag || "",
       desc: p.description || "",
       sizes: (p.variants || []).map(v => normalizeVariantValue(v.size)),
       retail: p.retail_price || 0,
@@ -536,17 +1062,794 @@ function buildPacksFromProducts() {
     }; // pour affiner les droits admin (ex: gestion commandes, gestion produits, etc)
   let cart = [];
   let selectedProductId = null;
-  let query = "", brand = "ALL", cat = "ALL";
+  let query = "", brand = "ALL", cat = "ALL", catalogSort = "default";
   let adminOrdersCache = [];
+  let adminOrdersPage = 1;
+  const ADMIN_ORDERS_PER_PAGE = 10;
+  let adminProductsCache = [];
+  let adminProductsPage = 1;
+  const ADMIN_PRODUCTS_PER_PAGE = 5;
+  let adminInventoryCache = [];
+  let adminInventoryPage = 1;
+  const ADMIN_INVENTORY_PER_PAGE = 5;
+  let activeAdminSection = "overview"; // Overview / Orders / Products / Resellers / Analytics
   let adminStatsCache = null;
   let adminAnalyticsCache = null;
   let resellerOrdersCache = [];
+  let resellerOrdersPage = 1;
+  const RESELLER_ORDERS_PER_PAGE = 3;
+  let adminResellerAppsCache = [];
+  let adminResellerAppsPage = 1;
+  const ADMIN_RESELLER_APPS_PER_PAGE = 3;
+  let productImagePreviewUrl = null;
 
   const byId = id => document.getElementById(id);
   const money = n => new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
   const getProduct = sku => products.find(p=>p.id===sku);
   const priceOf = p => (mode==="reseller" ? p.reseller : p.retail);
 
+  function escapeHtml(value){
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderProductTechItem(item, sectionTitle = ""){
+  const text = String(item || "").trim();
+
+  if(!text){
+    return "";
+  }
+
+  const colonIndex = text.indexOf(":");
+  const isAdvantage = sectionTitle.toLowerCase().includes("avantage");
+
+  if(isAdvantage){
+    return `
+      <div class="productAdvantageItem">
+        <span>${escapeHtml(text)}</span>
+      </div>
+    `;
+  }
+
+  if(colonIndex > 0){
+    const label = text.slice(0, colonIndex).trim();
+    const value = text.slice(colonIndex + 1).trim();
+
+    return `
+      <div class="productTechRow">
+        <div class="productTechLabel">${escapeHtml(label)}</div>
+        <div class="productTechValue">${value ? escapeHtml(value) : "—"}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="productPlainDescription">
+      ${escapeHtml(text)}
+    </div>
+  `;
+}
+
+function renderProductDescription(desc){
+  const text = String(desc || "").trim();
+
+  if(!text){
+    return `
+      <div class="productDescriptionBlock">
+        <div class="productPlainDescription muted">
+          Aucune description disponible.
+        </div>
+      </div>
+    `;
+  }
+
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const sections = [];
+  let currentSection = {
+    title: "Description",
+    items: []
+  };
+
+  function pushCurrentSection(){
+    if(currentSection.items.length){
+      sections.push(currentSection);
+    }
+  }
+
+  lines.forEach(line => {
+    const cleanLine = line.replace(/^[-•]\s*/, "").trim();
+    const normalized = cleanLine.toLowerCase();
+
+    if(cleanLine === "---"){
+      pushCurrentSection();
+      currentSection = {
+        title: "Informations complémentaires",
+        items: []
+      };
+      return;
+    }
+
+    if(normalized.startsWith("fiche technique")){
+      pushCurrentSection();
+      currentSection = {
+        title: "Fiche technique",
+        items: []
+      };
+      return;
+    }
+
+    if(normalized.startsWith("avantages")){
+      pushCurrentSection();
+      currentSection = {
+        title: "Avantages",
+        items: []
+      };
+      return;
+    }
+
+    if(cleanLine){
+      currentSection.items.push(cleanLine);
+    }
+  });
+
+  pushCurrentSection();
+
+  if(!sections.length){
+    return `
+      <div class="productDescriptionBlock">
+        <div class="productPlainDescription">${escapeHtml(text)}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="productDescriptionBlock">
+      ${sections.map(section => `
+        <div class="productTechCard">
+          <div class="productTechTitle">${escapeHtml(section.title)}</div>
+
+          <div class="productTechList">
+            ${section.items.map(item => renderProductTechItem(item, section.title)).join("")}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function productStatusPill(active){
+  return active
+    ? `<span class="pill ok">Actif</span>`
+    : `<span class="pill bad">Archivé</span>`;
+}
+
+function getCatalogStockInfo(totalStock){
+  const qty = Number(totalStock || 0);
+
+  if(qty <= 0){
+    return {
+      label: "Rupture",
+      cls: "catalogBadgeStockBad",
+      short: "0 stock"
+    };
+  }
+
+  if(qty <= 6){
+    return {
+      label: "Stock faible",
+      cls: "catalogBadgeStockWarn",
+      short: `${qty} en stock`
+    };
+  }
+
+  return {
+    label: "Disponible",
+    cls: "catalogBadgeStockOk",
+    short: `${qty} en stock`
+  };
+}
+
+async function fetchAdminProducts(){
+  const q = (byId("adminProductSearch")?.value || "").trim();
+  const url = q
+    ? `/api/admin/products/?q=${encodeURIComponent(q)}`
+    : "/api/admin/products/";
+
+  const res = await fetch(url, {
+    credentials: "same-origin"
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if(!res.ok || !data.ok){
+    throw new Error(data.error || "Erreur chargement produits.");
+  }
+
+  adminProductsCache = data.results || [];
+  return adminProductsCache;
+}
+
+function renderAdminProductsTable(products){
+  const tbody = byId("adminProductsTable");
+  if(!tbody) return;
+
+  const allRows = Array.isArray(products) ? products : [];
+
+  if(!allRows.length){
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="muted">Aucun produit trouvé.</td>
+      </tr>
+    `;
+
+    renderAdminProductsPagination(0);
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(allRows.length / ADMIN_PRODUCTS_PER_PAGE));
+
+  if(adminProductsPage > totalPages){
+    adminProductsPage = totalPages;
+  }
+
+  if(adminProductsPage < 1){
+    adminProductsPage = 1;
+  }
+
+  const start = (adminProductsPage - 1) * ADMIN_PRODUCTS_PER_PAGE;
+  const end = start + ADMIN_PRODUCTS_PER_PAGE;
+  const rows = allRows.slice(start, end);
+
+  tbody.innerHTML = rows.map(p => {
+    const variantsHtml = (p.variants || []).map(v => {
+      const stock = Number(v.stock_qty || 0);
+      const stockClass = stock <= 3 ? "warn" : "";
+      return `<span class="pill ${stockClass}">${escapeHtml(v.size)} : ${stock}</span>`;
+    }).join(" ");
+
+    const imageHtml = p.image_url
+      ? `<img src="${escapeHtml(p.image_url)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:12px;border:1px solid rgba(15,23,42,.12);">`
+      : `<span class="productNoImage">—</span>`;
+
+    return `
+      <tr>
+        <td>${imageHtml}</td>
+
+        <td>
+          <b>${escapeHtml(p.sku)}</b>
+          <div class="mini">${escapeHtml(p.variant_type || "")}</div>
+        </td>
+
+        <td>
+          <b>${escapeHtml(p.name)}</b>
+          <div class="mini">
+            ${escapeHtml(p.brand || "")}
+            ${p.brand && p.category ? " • " : ""}
+            ${escapeHtml(p.category || "")}
+          </div>
+          ${p.tag ? `<div class="mini">Tag : ${escapeHtml(p.tag)}</div>` : ""}
+        </td>
+
+        <td>
+          <b>${money(Number(p.retail_price || 0))}</b>
+        </td>
+
+        <td>
+          <b>${money(Number(p.reseller_price || 0))}</b>
+          <div class="mini">MOQ : ${Number(p.reseller_moq || 1)}</div>
+        </td>
+
+        <td>
+          ${variantsHtml || `<span class="muted">Aucune variante</span>`}
+        </td>
+
+        <td>
+          ${productStatusPill(p.is_active)}
+        </td>
+
+        <td>
+          <div class="hero-row">
+            <button class="btn small" type="button" data-action="editProduct" data-sku="${escapeHtml(p.sku)}">
+              ✏️ Modifier
+            </button>
+
+            <button class="btn small ${p.is_active ? "danger" : "primary"}" type="button" data-action="toggleProduct" data-sku="${escapeHtml(p.sku)}" data-active="${p.is_active ? "0" : "1"}">
+              ${p.is_active ? "Archiver" : "Réactiver"}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  renderAdminProductsPagination(allRows.length);
+}
+
+function renderAdminProductsPagination(totalItems){
+  const pager = byId("adminProductsPager");
+  const info = byId("adminProductsPagerInfo");
+  const prevBtn = byId("adminProductsPrevBtn");
+  const nextBtn = byId("adminProductsNextBtn");
+
+  if(!pager || !info || !prevBtn || !nextBtn){
+    return;
+  }
+
+  if(!totalItems || totalItems <= ADMIN_PRODUCTS_PER_PAGE){
+    pager.style.display = "none";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_PRODUCTS_PER_PAGE));
+
+  if(adminProductsPage > totalPages){
+    adminProductsPage = totalPages;
+  }
+
+  pager.style.display = "flex";
+
+  const start = (adminProductsPage - 1) * ADMIN_PRODUCTS_PER_PAGE + 1;
+  const end = Math.min(adminProductsPage * ADMIN_PRODUCTS_PER_PAGE, totalItems);
+
+  info.textContent = `Page ${adminProductsPage} / ${totalPages} • ${start}-${end} sur ${totalItems}`;
+
+  prevBtn.disabled = adminProductsPage <= 1;
+  nextBtn.disabled = adminProductsPage >= totalPages;
+}
+
+function goToAdminProductsPage(direction){
+  const totalItems = adminProductsCache.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_PRODUCTS_PER_PAGE));
+
+  adminProductsPage += direction;
+
+  if(adminProductsPage < 1){
+    adminProductsPage = 1;
+  }
+
+  if(adminProductsPage > totalPages){
+    adminProductsPage = totalPages;
+  }
+
+  renderAdminProductsTable(adminProductsCache);
+}
+
+async function renderAdminProducts(){
+  const tbody = byId("adminProductsTable");
+  if(!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="8" class="muted">Chargement des produits...</td>
+    </tr>
+  `;
+
+  try{
+    const products = await fetchAdminProducts();
+    renderAdminProductsTable(products);
+  }catch(e){
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="muted">
+          Erreur : ${escapeHtml(e.message)}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function variantLinesFromProduct(product){
+  return (product?.variants || [])
+    .map(v => `${v.size}=${Number(v.stock_qty || 0)}`)
+    .join("\n");
+}
+
+function parseProductVariantLines(raw){
+  const text = String(raw || "").trim();
+
+  if(!text){
+    return [];
+  }
+
+  const rows = [];
+  const seen = new Set();
+  const lines = text.split(/\n|,/).map(x => x.trim()).filter(Boolean);
+
+  for(const line of lines){
+    let label = "";
+    let qtyRaw = "";
+
+    if(line.includes("=")){
+      const parts = line.split("=");
+      label = parts.shift().trim();
+      qtyRaw = parts.join("=").trim();
+    }else if(line.includes(":")){
+      const parts = line.split(":");
+      label = parts.shift().trim();
+      qtyRaw = parts.join(":").trim();
+    }else{
+      const parts = line.split(/\s+/);
+      label = parts[0] || "";
+      qtyRaw = parts[1] || "0";
+    }
+
+    if(!label){
+      continue;
+    }
+
+    const key = label.toLowerCase();
+
+    if(seen.has(key)){
+      throw new Error(`Variante en double : ${label}`);
+    }
+
+    const qty = Number.parseInt(qtyRaw || "0", 10);
+
+    if(Number.isNaN(qty) || qty < 0){
+      throw new Error(`Stock invalide pour ${label}`);
+    }
+
+    rows.push({
+      size: label,
+      stock_qty: qty,
+    });
+
+    seen.add(key);
+  }
+
+  return rows;
+}
+
+function openProductEditor(product){
+  const modal = byId("productEditorModal");
+
+  if(!modal){
+    alert("Modal produit introuvable dans le HTML.");
+    return;
+  }
+
+  const isEdit = !!product;
+
+  byId("productEditorTitle").textContent = isEdit ? `Modifier ${product.sku}` : "Nouveau produit";
+
+  byId("peOldSku").value = product?.sku || "";
+  byId("peSku").value = product?.sku || "";
+  if(byId("peSku")){
+  byId("peSku").dataset.autoSku = product ? "0" : "1";
+  }
+  byId("peName").value = product?.name || "";
+  byId("peBrand").value = product?.brand || "";
+  byId("peCategory").value = normalizeProductCategory(product?.category || "");
+
+  if(!product){
+  applyGeneratedSku(false);
+  }else{
+    updateSkuHint();
+  }
+  byId("peTag").value = product?.tag || "";
+  byId("peVariantType").value = product?.variant_type || getRecommendedVariantTypeForCategory(product?.category || "");
+  byId("peRetailPrice").value = Number(product?.retail_price || 0);
+  byId("peResellerPrice").value = Number(product?.reseller_price || 0);
+  byId("peResellerMoq").value = Number(product?.reseller_moq || 1);
+  byId("peDescription").value = product?.description || "";
+  byId("peVariants").value = product ? variantLinesFromProduct(product) : "";
+  byId("peIsActive").checked = product ? !!product.is_active : true;
+
+ if(byId("peImage")){
+  byId("peImage").value = "";
+}
+
+clearProductImagePreviewUrl();
+
+if(product?.image_url){
+  setProductImagePreview(product.image_url);
+
+  if(byId("peImageHint")){
+    byId("peImageHint").textContent = "Image actuelle conservée si aucun nouveau fichier n'est choisi.";
+  }
+}else{
+  setProductImagePreview(null);
+
+  if(byId("peImageHint")){
+    byId("peImageHint").textContent = "Aucune image actuelle.";
+  }
+}
+
+  if(byId("productEditorNote")){
+    byId("productEditorNote").style.display = "none";
+    byId("productEditorNote").textContent = "";
+  }
+
+  modal.style.display = "flex";
+  updateProductVariantHelper();
+  updateTechnicalTemplateHint();
+}
+
+
+  function closeProductEditor(){
+  const modal = byId("productEditorModal");
+
+  if(modal){
+    modal.style.display = "none";
+  }
+
+  clearProductImagePreviewUrl();
+
+  if(byId("peImage")){
+    byId("peImage").value = "";
+  }
+
+  setProductImagePreview(null);
+}
+
+
+function showProductEditorNote(message){
+  const note = byId("productEditorNote");
+
+  if(!note){
+    alert(message);
+    return;
+  }
+
+  note.style.display = "block";
+  note.textContent = message;
+}
+
+function clearProductImagePreviewUrl(){
+  if(productImagePreviewUrl){
+    URL.revokeObjectURL(productImagePreviewUrl);
+    productImagePreviewUrl = null;
+  }
+}
+
+function setProductImagePreview(src){
+  const preview = byId("peImagePreview");
+
+  if(!preview){
+    return;
+  }
+
+  if(src){
+    preview.innerHTML = `
+      <img src="${escapeHtml(src)}" alt="Aperçu image produit">
+    `;
+  }else{
+    preview.innerHTML = `<span>Aucune image</span>`;
+  }
+}
+
+function getCurrentEditorProduct(){
+  const oldSku = (byId("peOldSku")?.value || "").trim();
+
+  if(!oldSku){
+    return null;
+  }
+
+  return adminProductsCache.find(p => {
+    return String(p.sku).toLowerCase() === oldSku.toLowerCase();
+  }) || null;
+}
+
+function restoreCurrentProductImagePreview(){
+  clearProductImagePreviewUrl();
+
+  const product = getCurrentEditorProduct();
+
+  if(product?.image_url){
+    setProductImagePreview(product.image_url);
+
+    if(byId("peImageHint")){
+      byId("peImageHint").textContent = "Image actuelle conservée si aucun nouveau fichier n'est choisi.";
+    }
+  }else{
+    setProductImagePreview(null);
+
+    if(byId("peImageHint")){
+      byId("peImageHint").textContent = "Aucune image actuelle.";
+    }
+  }
+}
+
+function handleProductImageSelection(){
+  const input = byId("peImage");
+  const file = input?.files?.[0];
+
+  clearProductImagePreviewUrl();
+
+  if(!file){
+    restoreCurrentProductImagePreview();
+    return;
+  }
+
+  if(!file.type || !file.type.startsWith("image/")){
+    alert("Choisis un fichier image valide.");
+    input.value = "";
+    restoreCurrentProductImagePreview();
+    return;
+  }
+
+  productImagePreviewUrl = URL.createObjectURL(file);
+  setProductImagePreview(productImagePreviewUrl);
+
+  if(byId("peImageHint")){
+    const sizeKo = Math.round(file.size / 1024);
+    byId("peImageHint").textContent = `Nouveau fichier sélectionné : ${file.name} — ${sizeKo} Ko`;
+  }
+}
+
+function clearSelectedProductImageFile(){
+  const input = byId("peImage");
+
+  if(input){
+    input.value = "";
+  }
+
+  restoreCurrentProductImagePreview();
+}
+
+async function saveProductFromEditor(){
+  const btn = byId("saveProductBtn");
+  const oldText = btn?.textContent || "Enregistrer";
+
+  try{
+    const variants = parseProductVariantLines(byId("peVariants")?.value || "");
+
+    if(!variants.length){
+      showProductEditorNote("Ajoute au moins une variante avec son stock. Exemple : 39=5");
+      return;
+    }
+
+    const sku = (byId("peSku")?.value || "").trim();
+    const name = (byId("peName")?.value || "").trim();
+
+    if(!sku){
+      showProductEditorNote("SKU obligatoire.");
+      return;
+    }
+
+    if(!name){
+      showProductEditorNote("Nom produit obligatoire.");
+      return;
+    }
+
+    const fd = new FormData();
+
+    fd.append("old_sku", (byId("peOldSku")?.value || "").trim());
+    fd.append("sku", sku);
+    fd.append("name", name);
+    fd.append("brand", (byId("peBrand")?.value || "").trim());
+    fd.append("category", normalizeProductCategory(byId("peCategory")?.value || ""));
+    fd.append("tag", (byId("peTag")?.value || "").trim());
+    fd.append("variant_type", byId("peVariantType")?.value || "shoe_size");
+    fd.append("retail_price", byId("peRetailPrice")?.value || "0");
+    fd.append("reseller_price", byId("peResellerPrice")?.value || "0");
+    fd.append("reseller_moq", byId("peResellerMoq")?.value || "1");
+    fd.append("description", byId("peDescription")?.value || "");
+    fd.append("is_active", byId("peIsActive")?.checked ? "1" : "0");
+    fd.append("variants_json", JSON.stringify(variants));
+
+    const imageFile = byId("peImage")?.files?.[0];
+
+    if(imageFile){
+      fd.append("image", imageFile);
+    }
+
+    if(btn){
+      btn.disabled = true;
+      btn.textContent = "Enregistrement...";
+    }
+
+    const res = await fetch("/api/admin/products/save/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: fd,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if(!res.ok || !data.ok){
+      showProductEditorNote(data.error || "Erreur pendant l'enregistrement.");
+      return;
+    }
+
+    closeProductEditor();
+
+    await renderAdminProducts();
+
+    if(typeof renderInventory === "function"){
+      await renderInventory();
+    }
+
+    if(typeof loadProductsFromApi === "function"){
+      await loadProductsFromApi();
+    }
+
+    if(typeof renderProducts === "function"){
+      renderProducts();
+    }
+
+    if(typeof renderProductDetail === "function"){
+      renderProductDetail();
+    }
+
+    if(typeof renderPacks === "function"){
+      renderPacks();
+    }
+
+  }catch(e){
+    showProductEditorNote(e.message || "Erreur produit.");
+  }finally{
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
+}
+
+async function toggleProductActive(sku, isActive){
+  if(!sku){
+    return;
+  }
+
+  const actionText = isActive ? "réactiver" : "archiver";
+
+  if(!confirm(`Confirmer : ${actionText} le produit ${sku} ?`)){
+    return;
+  }
+
+  try{
+    const res = await fetch(`/api/admin/products/${encodeURIComponent(sku)}/toggle/`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify({
+        is_active: !!isActive,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if(!res.ok || !data.ok){
+      alert(data.error || "Erreur produit.");
+      return;
+    }
+
+    await renderAdminProducts();
+
+    if(typeof loadProductsFromApi === "function"){
+      await loadProductsFromApi();
+    }
+
+    if(typeof renderProducts === "function"){
+      renderProducts();
+    }
+
+    if(typeof renderProductDetail === "function"){
+      renderProductDetail();
+    }
+
+    if(typeof renderPacks === "function"){
+      renderPacks();
+    }
+
+  }catch(e){
+    alert(e.message || "Erreur produit.");
+  }
+}
 
   async function logout(){
   const csrf =
@@ -563,6 +1866,79 @@ function buildPacksFromProducts() {
   await syncRoleFromBackend();
   renderAll();
   goTab("shop");
+}
+
+function adminSectionAllowed(section){
+  if(role !== "admin"){
+    return false;
+  }
+
+  if(section === "overview"){
+    return !!adminPermissions.orders;
+  }
+
+  if(section === "orders"){
+    return !!(adminPermissions.orders || adminPermissions.payments);
+  }
+
+  if(section === "products"){
+    return !!adminPermissions.inventory;
+  }
+
+  if(section === "inventory"){
+    return !!adminPermissions.inventory;
+  }
+
+  if(section === "resellers"){
+    return !!adminPermissions.resellers;
+  }
+
+  return false;
+}
+
+function firstAllowedAdminSection(){
+  const order = ["overview", "orders", "products", "inventory", "resellers"];
+
+  return order.find(section => adminSectionAllowed(section)) || "overview";
+}
+
+function applyAdminSectionVisibility(){
+  if(role !== "admin"){
+    return;
+  }
+
+  if(!adminSectionAllowed(activeAdminSection)){
+    activeAdminSection = firstAllowedAdminSection();
+  }
+
+  const sections = {
+    overview: "adminAnalyticsSection",
+    orders: "adminOrdersSection",
+    products: "adminProductsSection",
+    inventory: "adminInventorySection",
+    resellers: "adminResellersSection",
+  };
+
+  Object.entries(sections).forEach(([key, sectionId]) => {
+    const section = byId(sectionId);
+    const btn = document.querySelector(`[data-admin-section="${key}"]`);
+    const allowed = adminSectionAllowed(key);
+    const isActive = key === activeAdminSection;
+
+    if(btn){
+      btn.style.display = allowed ? "inline-flex" : "none";
+      btn.classList.toggle("active", allowed && isActive);
+    }
+
+    if(section){
+      section.style.display = allowed && isActive ? "" : "none";
+    }
+  });
+}
+
+function switchAdminSection(section){
+  activeAdminSection = section;
+  applyAdminSectionVisibility();
 }
 
 function syncRoleUI(){
@@ -632,6 +2008,8 @@ function syncRoleUI(){
   if(analyticsSection){
     analyticsSection.style.display = adminPermissions.orders ? "" : "none";
   }
+
+  applyAdminSectionVisibility();
 }
 
   function initStockIfMissing(){
@@ -719,22 +2097,85 @@ function syncRoleUI(){
   }
 
   function initFilters(){
-    const brands = Array.from(new Set(products.map(p=>p.brand))).sort();
-    const sel = byId("brandFilter");
-    brands.forEach(b=>{
-      const opt = document.createElement("option");
-      opt.value = b; opt.textContent = "Marque : " + b;
-      sel.appendChild(opt);
-    });
+  const sel = byId("brandFilter");
+
+  if(!sel){
+    return;
   }
+
+  const currentValue = sel.value || "ALL";
+
+  sel.innerHTML = "";
+
+  const allOpt = document.createElement("option");
+  allOpt.value = "ALL";
+  allOpt.textContent = "Marque : Toutes";
+  sel.appendChild(allOpt);
+
+  const brands = Array.from(
+    new Set(
+      products
+        .map(p => String(p.brand || "").trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, "fr"));
+
+  brands.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b;
+    opt.textContent = "Marque : " + b;
+    sel.appendChild(opt);
+  });
+
+  if([...sel.options].some(opt => opt.value === currentValue)){
+    sel.value = currentValue;
+  }else{
+    sel.value = "ALL";
+    brand = "ALL";
+  }
+}
+
+  function normalizeSearchText(value){
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function productSearchText(p){
+  const totalSt = totalStockOfSku(p.id);
+  const stockLabel = totalSt > 0 ? "disponible en stock" : "rupture indisponible";
+  const price = priceOf(p);
+
+  return normalizeSearchText([
+    p.name,
+    p.id,
+    p.brand,
+    p.cat,
+    p.tag,
+    p.desc,
+    price,
+    money(price),
+    stockLabel,
+    `moq ${p.moq}`,
+    `stock ${totalSt}`,
+  ].join(" "));
+}
+
   function filteredProducts(){
-    return products.filter(p=>{
-      const okQ = (p.name+" "+p.id+" "+p.brand).toLowerCase().includes(query.toLowerCase());
-      const okB = (brand==="ALL" ? true : p.brand===brand);
-      const okC = (cat==="ALL" ? true : p.cat===cat);
-      return okQ && okB && okC;
-    });
-  }
+  const q = normalizeSearchText(query);
+
+  return products.filter(p => {
+    const haystack = productSearchText(p);
+
+    const okQ = !q ? true : haystack.includes(q);
+    const okB = brand === "ALL" ? true : p.brand === brand;
+    const okC = cat === "ALL" ? true : p.cat === cat;
+
+    return okQ && okB && okC;
+  });
+}
 
   async function reorderResellerOrder(orderNo){
   try{
@@ -791,49 +2232,89 @@ function syncRoleUI(){
   }
 }
 
-  function renderProducts(){
+ function renderProducts(){
   const grid = byId("productGrid");
   if(!grid) return;
 
   grid.innerHTML = "";
+
   const list = filteredProducts();
-  byId("resultCount").textContent = `${list.length} produit(s)`;
 
-  list.forEach(p=>{
+  if(byId("resultCount")){
+    byId("resultCount").textContent = `${list.length} produit(s)`;
+  }
+
+  if(!list.length){
+    grid.innerHTML = `
+      <div class="muted" style="padding:16px;">
+        Aucun produit trouvé.
+      </div>
+    `;
+    return;
+  }
+
+  list.forEach(p => {
     const totalSt = totalStockOfSku(p.id);
-    const statusClass = totalSt<=0 ? "bad" : (totalSt<=6 ? "warn" : "ok");
+    const stockInfo = getCatalogStockInfo(totalSt);
+    const canAdd = totalSt > 0;
 
-    // ✅ image en background (ne bloque pas les clics)
-    const bg = p.image_url ? `background-image:url('${p.image_url}');` : "";
+    const firstLetter = String(p.name || p.brand || "T")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "T";
 
     const card = document.createElement("div");
-    card.className = "card";
+    card.className = "card catalogCard";
+
     card.innerHTML = `
-      <div class="img">
-        ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">` : ""}
-        <div class="tag">${p.tag}</div>
-        <div class="statusPill ${statusClass}">${totalSt} stock total</div>
+      <div class="catalogImageBox">
+        ${
+          p.image_url
+            ? `<img class="catalogProductImage" src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name || "")}">`
+            : `<div class="catalogImageFallback">${escapeHtml(firstLetter)}</div>`
+        }
+
+        ${p.tag ? `<div class="catalogTag">${escapeHtml(p.tag)}</div>` : ""}
       </div>
 
-
-      <div class="content">
-        <div class="title">
-          <div>
-            <h4>${p.name}</h4>
-            <div class="code">
-              ${p.brand} • ${p.id} • ${p.cat}<br/>
-              MOQ revendeur: ${p.moq}
-            </div>
+      <div class="catalogBody">
+        <div class="catalogMainRow">
+          <div class="catalogInfo">
+            <h4>${escapeHtml(p.name || "Produit sans nom")}</h4>
+            <div class="catalogBrand">${escapeHtml(p.brand || "Sans marque")}</div>
           </div>
-          <div class="price">
+
+          <div class="catalogPriceBlock">
             <div class="now">${money(priceOf(p))}</div>
-            <div class="hint">${mode==="reseller" ? "prix revendeur" : "prix public"}</div>
+            <div class="hint">${mode === "reseller" ? "prix revendeur" : "prix public"}</div>
           </div>
         </div>
 
-        <div class="footer">
-          <button class="btn small primary" data-detail="${p.id}">📄 Voir fiche</button>
-          <button class="btn small" data-quick="${p.id}">➕ Ajouter</button>
+        <div class="catalogMetaText">
+          ${escapeHtml(p.cat || "Autres")} • SKU ${escapeHtml(p.id || "")}
+        </div>
+
+        <div class="catalogStockLine ${stockInfo.cls}">
+          <span class="stockDot"></span>
+          <span>${escapeHtml(stockInfo.label)}</span>
+          <span class="catalogSeparator">•</span>
+          <span>MOQ ${Number(p.moq || 1)}</span>
+        </div>
+
+        <div class="catalogActions">
+          <button class="btn small primary" type="button" data-detail="${escapeHtml(p.id)}">
+            📄 Voir fiche
+          </button>
+
+          <button
+            class="btn small"
+            type="button"
+            data-quick="${escapeHtml(p.id)}"
+            ${canAdd ? "" : "disabled"}
+            title="${canAdd ? "Ajouter au panier" : "Produit en rupture"}"
+          >
+            ${canAdd ? "➕ Ajouter" : "Rupture"}
+          </button>
         </div>
       </div>
     `;
@@ -841,12 +2322,16 @@ function syncRoleUI(){
     grid.appendChild(card);
   });
 
-  // ✅ events (important)
-  grid.querySelectorAll("[data-detail]").forEach(b=>{
-    b.addEventListener("click", ()=> showProductDetail(b.getAttribute("data-detail")));
+  grid.querySelectorAll("[data-detail]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      showProductDetail(btn.getAttribute("data-detail"));
+    });
   });
-  grid.querySelectorAll("[data-quick]").forEach(b=>{
-    b.addEventListener("click", ()=> quickAdd(b.getAttribute("data-quick")));
+
+  grid.querySelectorAll("[data-quick]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      quickAdd(btn.getAttribute("data-quick"));
+    });
   });
 }
 
@@ -917,11 +2402,13 @@ function renderResellerOrdersTable(list){
 
     if (sortFilter === "oldest") return aDate - bDate;
     if (sortFilter === "highest") return bTotal - aTotal;
+
     if (sortFilter === "active") {
       const byStatus = rankStatus(a.status) - rankStatus(b.status);
       if (byStatus !== 0) return byStatus;
       return bDate - aDate;
     }
+
     if (sortFilter === "payment_due") {
       const byPayment = rankPayment(a.payment_status) - rankPayment(b.payment_status);
       if (byPayment !== 0) return byPayment;
@@ -931,42 +2418,122 @@ function renderResellerOrdersTable(list){
     return bDate - aDate;
   });
 
-  tbody.innerHTML = filtered.map(o=>{
-  const rowClass = getResellerPaymentRowClass(o.payment_status);
-  const paymentFlag = getResellerPaymentFlag(o.payment_status);
-
-  return `
-    <tr class="${rowClass}">
-      <td><b>${o.orderNo || ""}</b></td>
-      <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : ""}</td>
-      <td>${o.city || ""} / ${o.quarter || ""}</td>
-      <td style="text-align:right"><b>${money(o.total || 0)}</b></td>
-      <td>
-        ${paymentBadge(o.payment_status)}
-        ${paymentFlag}
-      </td>
-      <td><span class="mini">${o.payment_ref || "—"}</span></td>
-      <td>${statusBadge(o.status)}</td>
-      <td>
-        <div class="mini" style="max-width:220px;">
-          ${formatLastActivity(o.last_activity)}
-        </div>
-        ${
-          o.last_activity?.note
-            ? `<div class="mini muted" style="margin-top:3px; max-width:220px;">${o.last_activity.note}</div>`
-            : ``
-        }
-      </td>
-      <td>
-        <button class="btn small ghost" data-action="viewResellerOrder" data-order="${o.orderNo}">Voir</button>
-      </td>
-    </tr>
-  `;
-}).join("");
-
   if(filtered.length === 0){
     tbody.innerHTML = `<tr><td colspan="9" class="muted">Aucune commande trouvée.</td></tr>`;
+    renderResellerOrdersPagination(0);
+    return;
   }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / RESELLER_ORDERS_PER_PAGE));
+
+  if(resellerOrdersPage > totalPages){
+    resellerOrdersPage = totalPages;
+  }
+
+  if(resellerOrdersPage < 1){
+    resellerOrdersPage = 1;
+  }
+
+  const start = (resellerOrdersPage - 1) * RESELLER_ORDERS_PER_PAGE;
+  const end = start + RESELLER_ORDERS_PER_PAGE;
+  const pageRows = filtered.slice(start, end);
+
+  tbody.innerHTML = pageRows.map(o=>{
+    const rowClass = getResellerPaymentRowClass(o.payment_status);
+    const paymentFlag = getResellerPaymentFlag(o.payment_status);
+
+    return `
+      <tr class="${rowClass}">
+        <td><b>${escapeHtml(o.orderNo || "")}</b></td>
+
+        <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : ""}</td>
+
+        <td>${escapeHtml(o.city || "")} / ${escapeHtml(o.quarter || "")}</td>
+
+        <td style="text-align:right"><b>${money(o.total || 0)}</b></td>
+
+        <td>
+          ${paymentBadge(o.payment_status)}
+          ${paymentFlag}
+        </td>
+
+        <td><span class="mini">${escapeHtml(o.payment_ref || "—")}</span></td>
+
+        <td>${statusBadge(o.status)}</td>
+
+        <td>
+          <div class="mini" style="max-width:220px;">
+            ${escapeHtml(formatLastActivity(o.last_activity))}
+          </div>
+
+          ${
+            o.last_activity?.note
+              ? `<div class="mini muted" style="margin-top:3px; max-width:220px;">${escapeHtml(o.last_activity.note)}</div>`
+              : ``
+          }
+        </td>
+
+        <td>
+          <button
+            class="btn small ghost"
+            type="button"
+            data-action="viewResellerOrder"
+            data-order="${escapeHtml(o.orderNo)}"
+          >
+            Voir
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  renderResellerOrdersPagination(filtered.length);
+}
+
+function renderResellerOrdersPagination(totalItems){
+  const pager = byId("resellerOrdersPager");
+  const info = byId("resellerOrdersPagerInfo");
+  const prevBtn = byId("resellerOrdersPrevBtn");
+  const nextBtn = byId("resellerOrdersNextBtn");
+
+  if(!pager || !info || !prevBtn || !nextBtn){
+    return;
+  }
+
+  if(!totalItems || totalItems <= RESELLER_ORDERS_PER_PAGE){
+    pager.style.display = "none";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / RESELLER_ORDERS_PER_PAGE));
+
+  if(resellerOrdersPage > totalPages){
+    resellerOrdersPage = totalPages;
+  }
+
+  if(resellerOrdersPage < 1){
+    resellerOrdersPage = 1;
+  }
+
+  pager.style.display = "flex";
+
+  const start = (resellerOrdersPage - 1) * RESELLER_ORDERS_PER_PAGE + 1;
+  const end = Math.min(resellerOrdersPage * RESELLER_ORDERS_PER_PAGE, totalItems);
+
+  info.textContent = `Page ${resellerOrdersPage} / ${totalPages} • ${start}-${end} sur ${totalItems}`;
+
+  prevBtn.disabled = resellerOrdersPage <= 1;
+  nextBtn.disabled = resellerOrdersPage >= totalPages;
+}
+
+function goToResellerOrdersPage(direction){
+  resellerOrdersPage += direction;
+
+  if(resellerOrdersPage < 1){
+    resellerOrdersPage = 1;
+  }
+
+  renderResellerOrdersTable(resellerOrdersCache);
 }
 
 async function renderResellerOrders(){
@@ -1211,7 +2778,7 @@ function renderResellerSummary(list){
             <span class="badge">MOQ: ${p.moq}</span>
             <span class="badge">Stock par ${variantLabel.toLowerCase()}</span>
           </div>
-          <div class="muted">${p.desc}</div>
+          ${renderProductDescription(p.desc)}
 
           <div class="section-title" style="margin-top:12px">
             <h3 style="margin:0;font-size:13px">${variantLabel}s / variantes</h3>
@@ -1780,11 +3347,12 @@ function validateReorderCart(cartItems){
     return (now - d) <= ms;
   }
   
- async function renderInventory(){
+ async function fetchAdminInventory(){
   const res = await fetch("/api/admin/inventory/");
 
   const text = await res.text();
   let data = {};
+
   try {
     data = text ? JSON.parse(text) : {};
   } catch (_) {
@@ -1795,34 +3363,156 @@ function validateReorderCart(cartItems){
     throw new Error(data.error || "Inventory API error");
   }
 
+  adminInventoryCache = data.results || [];
+  return adminInventoryCache;
+}
+
+function renderInventoryTable(list){
   const tbody = byId("stockTable");
   if(!tbody) return;
 
-  tbody.innerHTML = (data.results || []).map(p=>{
+  const rows = Array.isArray(list) ? list : [];
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">Aucun produit en inventaire.</td></tr>`;
+    renderAdminInventoryPagination(0);
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_INVENTORY_PER_PAGE));
+
+  if(adminInventoryPage > totalPages){
+    adminInventoryPage = totalPages;
+  }
+
+  if(adminInventoryPage < 1){
+    adminInventoryPage = 1;
+  }
+
+  const start = (adminInventoryPage - 1) * ADMIN_INVENTORY_PER_PAGE;
+  const end = start + ADMIN_INVENTORY_PER_PAGE;
+  const pageRows = rows.slice(start, end);
+
+  tbody.innerHTML = pageRows.map(p=>{
     const sizes = p.sizes || {};
-    const sizeChips = Object.keys(sizes).sort((a,b)=>String(a).localeCompare(String(b), "fr", {numeric:true})).map(s=>{
-      const qty = sizes[s];
+
+    const sortedSizes = Object.keys(sizes).sort((a,b)=>{
+      return String(a).localeCompare(String(b), "fr", { numeric:true });
+    });
+
+    const sizeChips = sortedSizes.map(s=>{
+      const qty = Number(sizes[s] || 0);
       const low = qty <= 10;
-      return `<span class="pill ${low ? "dangerPill" : ""}">${s}: ${qty}</span>`;
+
+      return `<span class="pill ${low ? "dangerPill" : ""}">${escapeHtml(s)}: ${qty}</span>`;
     }).join(" ");
 
-    const actions = Object.keys(sizes).sort((a,b)=>String(a).localeCompare(String(b), "fr", {numeric:true})).map(s=>`
+    const actions = sortedSizes.map(s=>`
       <div style="display:flex; gap:6px; align-items:center; margin:4px 0;">
-        <span class="muted" style="min-width:48px">${s}</span>
-        <button class="btn small" data-action="stockAdj" data-sku="${p.sku}" data-size="${s}" data-delta="1">+1</button>
-        <button class="btn small ghost" data-action="stockAdj" data-sku="${p.sku}" data-size="${s}" data-delta="-1">-1</button>
+        <span class="muted" style="min-width:48px">${escapeHtml(s)}</span>
+
+       <button
+          type="button"
+          class="btn small"
+          data-action="stockAdj"
+          data-sku="${escapeHtml(p.sku)}"
+          data-size="${escapeHtml(s)}"
+          data-delta="1"
+        >
+          +1
+        </button>
+
+        <button
+          type="button"
+          class="btn small ghost"
+          data-action="stockAdj"
+          data-sku="${escapeHtml(p.sku)}"
+          data-size="${escapeHtml(s)}"
+          data-delta="-1"
+        >
+          -1
+        </button>
       </div>
     `).join("");
 
     return `
       <tr>
-        <td><b>${p.sku}</b></td>
-        <td>${p.name}</td>
+        <td><b>${escapeHtml(p.sku)}</b></td>
+        <td>${escapeHtml(p.name || "")}</td>
         <td>${sizeChips || "<span class='muted'>—</span>"}</td>
         <td>${actions || "<span class='muted'>—</span>"}</td>
       </tr>
     `;
   }).join("");
+
+  renderAdminInventoryPagination(rows.length);
+}
+
+function renderAdminInventoryPagination(totalItems){
+  const pager = byId("adminInventoryPager");
+  const info = byId("adminInventoryPagerInfo");
+  const prevBtn = byId("adminInventoryPrevBtn");
+  const nextBtn = byId("adminInventoryNextBtn");
+
+  if(!pager || !info || !prevBtn || !nextBtn){
+    return;
+  }
+
+  if(!totalItems || totalItems <= ADMIN_INVENTORY_PER_PAGE){
+    pager.style.display = "none";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_INVENTORY_PER_PAGE));
+
+  if(adminInventoryPage > totalPages){
+    adminInventoryPage = totalPages;
+  }
+
+  if(adminInventoryPage < 1){
+    adminInventoryPage = 1;
+  }
+
+  pager.style.display = "flex";
+
+  const start = (adminInventoryPage - 1) * ADMIN_INVENTORY_PER_PAGE + 1;
+  const end = Math.min(adminInventoryPage * ADMIN_INVENTORY_PER_PAGE, totalItems);
+
+  info.textContent = `Page ${adminInventoryPage} / ${totalPages} • ${start}-${end} sur ${totalItems}`;
+
+  prevBtn.disabled = adminInventoryPage <= 1;
+  nextBtn.disabled = adminInventoryPage >= totalPages;
+}
+
+function goToAdminInventoryPage(direction){
+  const totalItems = adminInventoryCache.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_INVENTORY_PER_PAGE));
+
+  adminInventoryPage += direction;
+
+  if(adminInventoryPage < 1){
+    adminInventoryPage = 1;
+  }
+
+  if(adminInventoryPage > totalPages){
+    adminInventoryPage = totalPages;
+  }
+
+  renderInventoryTable(adminInventoryCache);
+}
+
+async function renderInventory(){
+  const tbody = byId("stockTable");
+  if(!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="4" class="muted">Chargement inventaire...</td></tr>`;
+
+  try{
+    const inventory = await fetchAdminInventory();
+    renderInventoryTable(inventory);
+  }catch(e){
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">Erreur: ${escapeHtml(e.message)}</td></tr>`;
+  }
 }
 
 async function fetchResellerApps(){
@@ -1840,6 +3530,119 @@ function pillClassForStatus(s){
   return "warn"; // pending
 }
 
+function renderResellerAppsTable(list){
+  const tbody = byId("resellerAppsTable");
+  if(!tbody) return;
+
+  const rows = Array.isArray(list) ? list : [];
+
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="8" class="muted">Aucune demande.</td></tr>`;
+    renderAdminResellerAppsPagination(0);
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_RESELLER_APPS_PER_PAGE));
+
+  if(adminResellerAppsPage > totalPages){
+    adminResellerAppsPage = totalPages;
+  }
+
+  if(adminResellerAppsPage < 1){
+    adminResellerAppsPage = 1;
+  }
+
+  const start = (adminResellerAppsPage - 1) * ADMIN_RESELLER_APPS_PER_PAGE;
+  const end = start + ADMIN_RESELLER_APPS_PER_PAGE;
+  const pageRows = rows.slice(start, end);
+
+  tbody.innerHTML = pageRows.map(a=>{
+    const dt = a.created_at ? new Date(a.created_at).toLocaleString() : "";
+    const u = a.user?.username || "";
+    const st = a.status || "pending";
+    const pill = pillClassForStatus(st);
+
+    const actions = st === "pending"
+      ? `
+        <button class="btn small primary" type="button" data-action="raApprove" data-id="${a.id}">
+          Approuver
+        </button>
+        <button class="btn small danger" type="button" data-action="raReject" data-id="${a.id}">
+          Refuser
+        </button>
+      `
+      : `<span class="muted">—</span>`;
+
+    return `
+      <tr>
+        <td>${escapeHtml(dt)}</td>
+        <td><b>${escapeHtml(u)}</b></td>
+        <td>${escapeHtml(a.full_name || "")}</td>
+        <td>${escapeHtml(a.phone || "")}</td>
+        <td>${escapeHtml(a.city || "")}</td>
+        <td style="text-align:right">${Number(a.monthly_volume ?? 0)}</td>
+        <td><span class="pill ${escapeHtml(pill)}">${escapeHtml(st)}</span></td>
+        <td>${actions}</td>
+      </tr>
+    `;
+  }).join("");
+
+  renderAdminResellerAppsPagination(rows.length);
+}
+
+function renderAdminResellerAppsPagination(totalItems){
+  const pager = byId("adminResellerAppsPager");
+  const info = byId("adminResellerAppsPagerInfo");
+  const prevBtn = byId("adminResellerAppsPrevBtn");
+  const nextBtn = byId("adminResellerAppsNextBtn");
+
+  if(!pager || !info || !prevBtn || !nextBtn){
+    return;
+  }
+
+  if(!totalItems || totalItems <= ADMIN_RESELLER_APPS_PER_PAGE){
+    pager.style.display = "none";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_RESELLER_APPS_PER_PAGE));
+
+  if(adminResellerAppsPage > totalPages){
+    adminResellerAppsPage = totalPages;
+  }
+
+  if(adminResellerAppsPage < 1){
+    adminResellerAppsPage = 1;
+  }
+
+  pager.style.display = "flex";
+
+  const start = (adminResellerAppsPage - 1) * ADMIN_RESELLER_APPS_PER_PAGE + 1;
+  const end = Math.min(adminResellerAppsPage * ADMIN_RESELLER_APPS_PER_PAGE, totalItems);
+
+  info.textContent = `Page ${adminResellerAppsPage} / ${totalPages} • ${start}-${end} sur ${totalItems}`;
+
+  prevBtn.disabled = adminResellerAppsPage <= 1;
+  nextBtn.disabled = adminResellerAppsPage >= totalPages;
+}
+
+function goToAdminResellerAppsPage(direction){
+  const totalItems = adminResellerAppsCache.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_RESELLER_APPS_PER_PAGE));
+
+  adminResellerAppsPage += direction;
+
+  if(adminResellerAppsPage < 1){
+    adminResellerAppsPage = 1;
+  }
+
+  if(adminResellerAppsPage > totalPages){
+    adminResellerAppsPage = totalPages;
+  }
+
+  renderResellerAppsTable(adminResellerAppsCache);
+}
+
 async function renderResellerApps(){
   const tbody = byId("resellerAppsTable");
   if(!tbody) return;
@@ -1848,41 +3651,13 @@ async function renderResellerApps(){
 
   try{
     const list = await fetchResellerApps();
-    if(list.length === 0){
-      tbody.innerHTML = `<tr><td colspan="8" class="muted">Aucune demande.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = list.map(a=>{
-      const dt = a.created_at ? new Date(a.created_at).toLocaleString() : "";
-      const u = a.user?.username || "";
-      const st = a.status || "pending";
-      const pill = pillClassForStatus(st);
-
-      const actions = (st === "pending")
-        ? `
-          <button class="btn small primary" data-action="raApprove" data-id="${a.id}">Approuver</button>
-          <button class="btn small danger" data-action="raReject" data-id="${a.id}">Refuser</button>
-        `
-        : `<span class="muted">—</span>`;
-
-      return `
-        <tr>
-          <td>${dt}</td>
-          <td><b>${u}</b></td>
-          <td>${a.full_name || ""}</td>
-          <td>${a.phone || ""}</td>
-          <td>${a.city || ""}</td>
-          <td style="text-align:right">${a.monthly_volume ?? 0}</td>
-          <td><span class="pill ${pill}">${st}</span></td>
-          <td>${actions}</td>
-        </tr>
-      `;
-    }).join("");
+    adminResellerAppsCache = list || [];
+    renderResellerAppsTable(adminResellerAppsCache);
 
   }catch(e){
     console.error(e);
-    tbody.innerHTML = `<tr><td colspan="8" class="muted">Erreur: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="muted">Erreur: ${escapeHtml(e.message)}</td></tr>`;
+    renderAdminResellerAppsPagination(0);
   }
 }
 
@@ -1944,54 +3719,155 @@ function renderOrdersAdminTable(list){
     const st = (o.status || "").toLowerCase();
     const haystack = `${o.orderNo || ""} ${o.name || ""} ${o.phone || ""} ${o.city || ""} ${o.quarter || ""}`.toLowerCase();
 
-    const okPayment = (paymentFilter === "all") ? true : pay === paymentFilter;
-    const okStatus = (statusFilter === "all") ? true : st === statusFilter;
+    const okPayment = paymentFilter === "all" ? true : pay === paymentFilter;
+    const okStatus = statusFilter === "all" ? true : st === statusFilter;
     const okSearch = !searchTerm ? true : haystack.includes(searchTerm);
 
     return okPayment && okStatus && okSearch;
   });
 
-  tbody.innerHTML = filtered.map(o=>{
+  if(filtered.length === 0){
+    tbody.innerHTML = `<tr><td colspan="9" class="muted">Aucune commande pour ce filtre.</td></tr>`;
+    renderAdminOrdersPagination(0);
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_ORDERS_PER_PAGE));
+
+  if(adminOrdersPage > totalPages){
+    adminOrdersPage = totalPages;
+  }
+
+  if(adminOrdersPage < 1){
+    adminOrdersPage = 1;
+  }
+
+  const start = (adminOrdersPage - 1) * ADMIN_ORDERS_PER_PAGE;
+  const end = start + ADMIN_ORDERS_PER_PAGE;
+  const pageRows = filtered.slice(start, end);
+
+  tbody.innerHTML = pageRows.map(o=>{
     const st = (o.status || "").toLowerCase();
     const nextStatus = nextMap[st] || "";
     const canStop = (st === "received" || st === "preparing");
 
     const advanceBtn = nextStatus
-      ? `<button class="btn small" data-action="nextStatus" data-order="${o.orderNo}" data-next="${nextStatus}">${labelMap[st] || "Avancer"}</button>`
+      ? `<button class="btn small" data-action="nextStatus" data-order="${escapeHtml(o.orderNo)}" data-next="${escapeHtml(nextStatus)}">${labelMap[st] || "Avancer"}</button>`
       : `<button class="btn small ghost" disabled>✅ Terminé</button>`;
 
     const cancelBtn = canStop
-      ? `<button class="btn small danger" data-action="setStatus" data-order="${o.orderNo}" data-status="cancelled">Annuler</button>`
+      ? `<button class="btn small danger" data-action="setStatus" data-order="${escapeHtml(o.orderNo)}" data-status="cancelled">Annuler</button>`
       : "";
 
     const failBtn = canStop
-      ? `<button class="btn small warn" data-action="setStatus" data-order="${o.orderNo}" data-status="failed">Échouer</button>`
+      ? `<button class="btn small warn" data-action="setStatus" data-order="${escapeHtml(o.orderNo)}" data-status="failed">Échouer</button>`
       : "";
 
-    const viewBtn = `<button class="btn small ghost" data-action="viewOrder" data-order="${o.orderNo}">Voir</button>`;
+    const viewBtn = `<button class="btn small ghost" data-action="viewOrder" data-order="${escapeHtml(o.orderNo)}">Voir</button>`;
+
     const statusActions = adminPermissions.orders ? `${advanceBtn}${cancelBtn}${failBtn}` : "";
     const btnHtml = `<div class="hero-row" style="gap:6px; flex-wrap:wrap">${viewBtn}${statusActions}</div>`;
+
+    const paymentRef = o.payment_ref || "";
+
     return `
       <tr>
-        <td><b>${o.orderNo || ""}</b></td>
+        <td><b>${escapeHtml(o.orderNo || "")}</b></td>
+
         <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : ""}</td>
-        <td>${o.name || ""}<div class="mini">${o.phone || ""}</div></td>
-        <td>${o.city || ""} / ${o.quarter || ""}</td>
-        <td style="text-align:right"><b>${money(o.total || 0)}</b></td>
-        <td>${paymentBadge(o.payment_status)}</td>
+
         <td>
-          <span class="mini" title="${o.payment_ref || ""}">
-            ${o.payment_ref ? o.payment_ref.slice(0, 18) + (o.payment_ref.length > 18 ? "…" : "") : "—"}
+          ${escapeHtml(o.name || "")}
+          <div class="mini">${escapeHtml(o.phone || "")}</div>
+        </td>
+
+        <td>${escapeHtml(o.city || "")} / ${escapeHtml(o.quarter || "")}</td>
+
+        <td style="text-align:right"><b>${money(o.total || 0)}</b></td>
+
+        <td>${paymentBadge(o.payment_status)}</td>
+
+        <td>
+          <span class="mini" title="${escapeHtml(paymentRef)}">
+            ${paymentRef ? escapeHtml(paymentRef.slice(0, 18)) + (paymentRef.length > 18 ? "…" : "") : "—"}
           </span>
         </td>
+
         <td>${statusBadge(o.status)}</td>
+
         <td>${btnHtml}</td>
       </tr>`;
   }).join("");
 
-  if(filtered.length === 0){
-    tbody.innerHTML = `<tr><td colspan="9" class="muted">Aucune commande pour ce filtre.</td></tr>`;
+  renderAdminOrdersPagination(filtered.length);
+}
+
+function renderAdminOrdersPagination(totalItems){
+  const pager = byId("adminOrdersPager");
+  const info = byId("adminOrdersPagerInfo");
+  const prevBtn = byId("adminOrdersPrevBtn");
+  const nextBtn = byId("adminOrdersNextBtn");
+
+  if(!pager || !info || !prevBtn || !nextBtn){
+    return;
   }
+
+  if(!totalItems || totalItems <= ADMIN_ORDERS_PER_PAGE){
+    pager.style.display = "none";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_ORDERS_PER_PAGE));
+
+  if(adminOrdersPage > totalPages){
+    adminOrdersPage = totalPages;
+  }
+
+  if(adminOrdersPage < 1){
+    adminOrdersPage = 1;
+  }
+
+  pager.style.display = "flex";
+
+  const start = (adminOrdersPage - 1) * ADMIN_ORDERS_PER_PAGE + 1;
+  const end = Math.min(adminOrdersPage * ADMIN_ORDERS_PER_PAGE, totalItems);
+
+  info.textContent = `Page ${adminOrdersPage} / ${totalPages} • ${start}-${end} sur ${totalItems}`;
+
+  prevBtn.disabled = adminOrdersPage <= 1;
+  nextBtn.disabled = adminOrdersPage >= totalPages;
+}
+
+function goToAdminOrdersPage(direction){
+  const paymentFilter = (byId("paymentFilter")?.value || "ALL").toLowerCase();
+  const statusFilter = (byId("statusFilter")?.value || "ALL").toLowerCase();
+  const searchTerm = (byId("orderSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = adminOrdersCache.filter(o => {
+    const pay = (o.payment_status || "").toLowerCase();
+    const st = (o.status || "").toLowerCase();
+    const haystack = `${o.orderNo || ""} ${o.name || ""} ${o.phone || ""} ${o.city || ""} ${o.quarter || ""}`.toLowerCase();
+
+    const okPayment = paymentFilter === "all" ? true : pay === paymentFilter;
+    const okStatus = statusFilter === "all" ? true : st === statusFilter;
+    const okSearch = !searchTerm ? true : haystack.includes(searchTerm);
+
+    return okPayment && okStatus && okSearch;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_ORDERS_PER_PAGE));
+
+  adminOrdersPage += direction;
+
+  if(adminOrdersPage < 1){
+    adminOrdersPage = 1;
+  }
+
+  if(adminOrdersPage > totalPages){
+    adminOrdersPage = totalPages;
+  }
+
+  renderOrdersAdminTable(adminOrdersCache);
 }
 
 async function renderDashboard(){
@@ -2083,6 +3959,7 @@ async function renderDashboard(){
 
     // ===== INVENTAIRE =====
     if(adminPermissions.inventory){
+      await renderAdminProducts();
       await renderInventory();
     }else{
       if(byId("stockTable")){
@@ -2359,9 +4236,10 @@ async function submitRegisterFromModal(){
 
 
   (async function boot(){
-  await loadProductsFromApi();   // charge les produits depuis Django
-  initFilters();
-  initCityQuarter();
+    await loadProductsFromApi();   // charge les produits depuis Django
+    initFilters();
+    initCategoryControls();
+    initCityQuarter();
   
   await syncRoleFromBackend();
   await refreshResellerStatus();
@@ -2539,9 +4417,20 @@ async function submitResellerApplication(){
   byId("tabTrack")?.addEventListener("click", ()=>goTab("track"));
   byId("tabAdmin")?.addEventListener("click", ()=>goTab("admin"));
 
-  byId("search")?.addEventListener("input", (e)=>{ query = e.target.value || ""; renderProducts(); });
-  byId("brandFilter")?.addEventListener("change", (e)=>{ brand = e.target.value; renderProducts(); });
-  byId("catFilter")?.addEventListener("change", (e)=>{ cat = e.target.value; renderProducts(); });
+byId("search")?.addEventListener("input", (e) => {
+  query = e.target.value || "";
+  renderProducts();
+});
+
+byId("brandFilter")?.addEventListener("change", (e) => {
+  brand = e.target.value || "ALL";
+  renderProducts();
+});
+
+byId("catFilter")?.addEventListener("change", (e) => {
+  cat = e.target.value || "ALL";
+  renderProducts();
+});
 
   byId("checkoutBtn")?.addEventListener("click", openCheckout);
   byId("openCheckoutBtn")?.addEventListener("click", openCheckout);
@@ -2567,13 +4456,17 @@ async function submitResellerApplication(){
 
   byId("dashRange")?.addEventListener("change", ()=> renderDashboard());
   byId("paymentFilter")?.addEventListener("change", ()=> {
+  adminOrdersPage = 1;
   renderOrdersAdminTable(adminOrdersCache);
 });
+
 byId("statusFilter")?.addEventListener("change", ()=> {
+  adminOrdersPage = 1;
   renderOrdersAdminTable(adminOrdersCache);
 });
 
 byId("orderSearch")?.addEventListener("input", ()=> {
+  adminOrdersPage = 1;
   renderOrdersAdminTable(adminOrdersCache);
 });
 byId("refreshDashBtn")?.addEventListener("click", ()=> renderDashboard());
@@ -2671,7 +4564,13 @@ byId("ordersTable")?.addEventListener("click", async (e) => {
 
 byId("stockTable")?.addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-action='stockAdj']");
-  if (!btn) return;
+
+  if (!btn) {
+    return;
+  }
+
+  e.preventDefault();
+  e.stopPropagation();
 
   const sku = btn.getAttribute("data-sku");
   const size = btn.getAttribute("data-size");
@@ -2680,16 +4579,27 @@ byId("stockTable")?.addEventListener("click", async (e) => {
   btn.disabled = true;
 
   try {
-    const data = await apiPost("/api/admin/inventory/adjust/", { sku, size, delta });
+    const data = await apiPost("/api/admin/inventory/adjust/", {
+      sku,
+      size,
+      delta
+    });
+
     if (!data.ok) {
       alert(data.error || "Erreur stock.");
       return;
     }
 
-    await renderInventory();
+    await fetchAdminInventory();
+    renderInventoryTable(adminInventoryCache);
+
     await loadProductsFromApi();
     renderProducts();
     renderProductDetail();
+
+    if (typeof renderAdminProducts === "function") {
+      await renderAdminProducts();
+    }
 
   } catch (err) {
     alert(err?.error || err?.message || "Erreur réseau / serveur.");
@@ -2773,27 +4683,59 @@ byId("resellerModal")?.addEventListener("click", (e)=>{
 
 // Reseller Applications dashboard
 byId("refreshResellerAppsBtn")?.addEventListener("click", renderResellerApps);
-byId("raStatusFilter")?.addEventListener("change", renderResellerApps);
+byId("raStatusFilter")?.addEventListener("change", () => {
+  adminResellerAppsPage = 1;
+  renderResellerApps();
+});
 
 byId("resellerAppsTable")?.addEventListener("click", async (e)=>{
   const approveBtn = e.target.closest("[data-action='raApprove']");
   const rejectBtn = e.target.closest("[data-action='raReject']");
   const btn = approveBtn || rejectBtn;
-  if(!btn) return;
+
+  if(!btn){
+    return;
+  }
+
+  e.preventDefault();
+  e.stopPropagation();
 
   const id = btn.getAttribute("data-id");
-  if(!id) return;
+
+  if(!id){
+    return;
+  }
+
+  const action = approveBtn ? "approve" : "reject";
+  const label = approveBtn ? "approuver" : "refuser";
+
+  if(!confirm(`Confirmer : ${label} cette demande revendeur ?`)){
+    return;
+  }
+
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Traitement...";
 
   try{
-    if(approveBtn) await resellerAppAction(id, "approve");
-    else await resellerAppAction(id, "reject");
+    await resellerAppAction(id, action);
 
     await renderResellerApps();
-    // optionnel: refresh me/orders si tu veux
+
+    activeAdminSection = "resellers";
+
+    if(typeof applyAdminSectionVisibility === "function"){
+      applyAdminSectionVisibility();
+    }
+
   }catch(err){
-    alert("Erreur: " + err.message);
+    alert("Erreur: " + (err.message || "action impossible"));
+  }finally{
+    btn.disabled = false;
+    btn.textContent = oldText;
   }
 });
+
 function openResellerTerms(){
   const m = byId("resellerTermsModal");
   if(m) m.style.display = "block";
@@ -2896,17 +4838,28 @@ byId("goTrackSuccessBtn")?.addEventListener("click", ()=>{
   if(no) renderTrackingFromApi(no);
 });
 
-byId("refreshResellerOrdersBtn")?.addEventListener("click", renderResellerOrders);
+byId("refreshResellerOrdersBtn")?.addEventListener("click", () => {
+  resellerOrdersPage = 1;
+  renderResellerOrders();
+});
 
 byId("resellerStatusFilter")?.addEventListener("change", ()=> {
+  resellerOrdersPage = 1;
   renderResellerOrdersTable(resellerOrdersCache);
 });
 
 byId("resellerPaymentFilter")?.addEventListener("change", ()=> {
+  resellerOrdersPage = 1;
   renderResellerOrdersTable(resellerOrdersCache);
 });
 
 byId("resellerOrderSearch")?.addEventListener("input", ()=> {
+  resellerOrdersPage = 1;
+  renderResellerOrdersTable(resellerOrdersCache);
+});
+
+byId("resellerSortFilter")?.addEventListener("change", ()=> {
+  resellerOrdersPage = 1;
   renderResellerOrdersTable(resellerOrdersCache);
 });
 
@@ -2923,9 +4876,183 @@ byId("resellerOrderDetailModal")?.addEventListener("click", (e)=>{
   if(e.target.id === "resellerOrderDetailModal") closeResellerOrderDetail();
 });
 
-byId("resellerSortFilter")?.addEventListener("change", ()=> {
-  renderResellerOrdersTable(resellerOrdersCache);
+
+byId("refreshProductsBtn")?.addEventListener("click", () => {
+  adminProductsPage = 1;
+  renderAdminProducts();
 });
+
+let adminProductSearchTimer = null;
+
+byId("adminProductSearch")?.addEventListener("input", () => {
+  clearTimeout(adminProductSearchTimer);
+
+  adminProductSearchTimer = setTimeout(() => {
+    adminProductsPage = 1;
+    renderAdminProducts();
+  }, 300);
+});
+
+byId("newProductBtn")?.addEventListener("click", () => {
+  openProductEditor(null);
+});
+
+byId("closeProductEditorBtn")?.addEventListener("click", closeProductEditor);
+
+byId("cancelProductEditorBtn")?.addEventListener("click", closeProductEditor);
+
+byId("saveProductBtn")?.addEventListener("click", saveProductFromEditor);
+
+byId("productEditorModal")?.addEventListener("click", (e) => {
+  if(e.target && e.target.id === "productEditorModal"){
+    closeProductEditor();
+  }
+});
+
+byId("adminProductsTable")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-action]");
+
+  if(!btn){
+    return;
+  }
+
+  const action = btn.getAttribute("data-action");
+  const sku = btn.getAttribute("data-sku");
+
+  if(action === "editProduct"){
+    const product = adminProductsCache.find(p => {
+      return String(p.sku).toLowerCase() === String(sku).toLowerCase();
+    });
+
+    if(!product){
+      alert("Produit introuvable dans le cache.");
+      return;
+    }
+
+    openProductEditor(product);
+    return;
+  }
+
+  if(action === "toggleProduct"){
+    toggleProductActive(sku, btn.getAttribute("data-active") === "1");
+  }
+});
+
+byId("adminSectionTabs")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-admin-section]");
+
+  if(!btn){
+    return;
+  }
+
+  switchAdminSection(btn.getAttribute("data-admin-section"));
+});
+
+byId("adminProductsPrevBtn")?.addEventListener("click", () => {
+  goToAdminProductsPage(-1);
+});
+
+byId("adminProductsNextBtn")?.addEventListener("click", () => {
+  goToAdminProductsPage(1);
+});
+
+byId("adminOrdersPrevBtn")?.addEventListener("click", () => {
+  goToAdminOrdersPage(-1);
+});
+
+byId("adminOrdersNextBtn")?.addEventListener("click", () => {
+  goToAdminOrdersPage(1);
+});
+
+byId("adminInventoryPrevBtn")?.addEventListener("click", () => {
+  goToAdminInventoryPage(-1);
+});
+
+byId("adminInventoryNextBtn")?.addEventListener("click", () => {
+  goToAdminInventoryPage(1);
+});
+
+byId("adminResellerAppsPrevBtn")?.addEventListener("click", () => {
+  goToAdminResellerAppsPage(-1);
+});
+
+byId("adminResellerAppsNextBtn")?.addEventListener("click", () => {
+  goToAdminResellerAppsPage(1);
+});
+
+byId("resellerOrdersPrevBtn")?.addEventListener("click", () => {
+  goToResellerOrdersPage(-1);
+});
+
+byId("resellerOrdersNextBtn")?.addEventListener("click", () => {
+  goToResellerOrdersPage(1);
+});
+
+byId("peImage")?.addEventListener("change", handleProductImageSelection);
+
+byId("clearSelectedImageBtn")?.addEventListener("click", clearSelectedProductImageFile);
+
+byId("peCategory")?.addEventListener("change", () => {
+  // SKU automatique uniquement pour nouveau produit.
+  if(!isEditingProduct()){
+    applyGeneratedSku(false);
+  }else{
+    updateSkuHint();
+  }
+
+  // Si tu as déjà les suggestions de type de variante, on les garde.
+  if(typeof applyRecommendedVariantType === "function" && typeof updateProductVariantHelper === "function"){
+    const oldSku = (byId("peOldSku")?.value || "").trim();
+    const variantsText = (byId("peVariants")?.value || "").trim();
+
+    if(!oldSku && !variantsText){
+      applyRecommendedVariantType();
+      return;
+    }
+
+    updateProductVariantHelper();
+  }
+})
+
+byId("peVariantType")?.addEventListener("change", updateProductVariantHelper);
+
+byId("applyRecommendedVariantBtn")?.addEventListener("click", applyRecommendedVariantType);
+
+byId("generateSkuBtn")?.addEventListener("click", () => {
+  const skuInput = byId("peSku");
+
+  if(skuInput){
+    skuInput.dataset.autoSku = "1";
+  }
+
+  applyGeneratedSku(true);
+});
+
+byId("peSku")?.addEventListener("input", () => {
+  const skuInput = byId("peSku");
+
+  if(!skuInput){
+    return;
+  }
+
+  // Dès que l'utilisateur tape manuellement, on protège son SKU.
+  skuInput.dataset.autoSku = "0";
+  updateSkuHint();
+});
+
+byId("fillTechTemplateBtn")?.addEventListener("click", () => {
+  fillTechnicalTemplate({
+    replace: false
+  });
+});
+
+byId("replaceTechTemplateBtn")?.addEventListener("click", () => {
+  fillTechnicalTemplate({
+    replace: true
+  });
+});
+
+byId("peCategory")?.addEventListener("change", updateTechnicalTemplateHint);
 
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest(".resellerTabBtn");

@@ -60,11 +60,14 @@
         <div class="hero-row" style="margin-bottom:12px">
           <div class="input" style="flex:1;min-width:220px">🔎 <input id="search" placeholder="Rechercher : Air, Jordan, sandales..." /></div>
           <select class="select" id="brandFilter"><option value="ALL">Marque : Toutes</option></select>
-          <select class="select" id="catFilter">
-            <option value="ALL">Categorie : Toutes</option>
-            <option value="Sneakers">Sneakers</option>
-            <option value="Sandales">Sandales</option>
-            <option value="Sport">Sport</option>
+          <select class="select" id="catFilter"></select>
+          <select class="select" id="catalogSortFilter">
+            <option value="default">Trier : Pertinence</option>
+            <option value="price_asc">Prix : moins cher</option>
+            <option value="price_desc">Prix : plus cher</option>
+            <option value="stock_desc">Stock : disponible d'abord</option>
+            <option value="name_asc">Nom : A-Z</option>
+            <option value="name_desc">Nom : Z-A</option>
           </select>
         </div>
 
@@ -142,6 +145,7 @@
 
             </div>
           </div>
+                
         </div>
       </aside>
     </div>
@@ -256,6 +260,19 @@
             <tbody id="resellerOrdersTable"></tbody>
           </table>
         </div>
+        <div class="tablePager" id="resellerOrdersPager" style="display:none">
+          <button class="btn small" type="button" id="resellerOrdersPrevBtn">
+            ← Précédent
+          </button>
+
+          <div class="tablePagerInfo" id="resellerOrdersPagerInfo">
+            Page 1 / 1
+          </div>
+
+          <button class="btn small" type="button" id="resellerOrdersNextBtn">
+            Suivant →
+          </button>
+        </div>
       </div>
     </div>
 
@@ -361,6 +378,27 @@
         <input class="text" id="orderSearch" placeholder="N° commande, client, téléphone, ville">
       </div>
     </div>
+    <div class="adminSectionTabs" id="adminSectionTabs">
+      <button class="adminSectionTab active" type="button" data-admin-section="overview">
+        📊 Vue générale
+      </button>
+
+      <button class="adminSectionTab" type="button" data-admin-section="orders">
+        🧾 Commandes
+      </button>
+
+      <button class="adminSectionTab" type="button" data-admin-section="products">
+        🛍️ Produits
+      </button>
+
+      <button class="adminSectionTab" type="button" data-admin-section="inventory">
+        📦 Inventaire
+      </button>
+
+      <button class="adminSectionTab" type="button" data-admin-section="resellers">
+        🤝 Revendeurs
+      </button>
+    </div>
   </div>
 
   <div id="adminAnalyticsSection">
@@ -422,6 +460,19 @@
           <tbody id="resellerAppsTable"></tbody>
         </table>
       </div>
+            <div class="tablePager" id="adminResellerAppsPager" style="display:none">
+              <button class="btn small" type="button" id="adminResellerAppsPrevBtn">
+                ← Précédent
+              </button>
+
+              <div class="tablePagerInfo" id="adminResellerAppsPagerInfo">
+                Page 1 / 1
+              </div>
+
+              <button class="btn small" type="button" id="adminResellerAppsNextBtn">
+                Suivant →
+              </button>
+            </div>
     </div>
   </div>
 
@@ -457,6 +508,91 @@
           <tbody id="ordersTable"></tbody>
         </table>
       </div>
+          <div class="tablePager" id="adminOrdersPager" style="display:none">
+              <button class="btn small" type="button" id="adminOrdersPrevBtn">
+                ← Précédent
+              </button>
+
+              <div class="tablePagerInfo" id="adminOrdersPagerInfo">
+                Page 1 / 1
+              </div>
+
+              <button class="btn small" type="button" id="adminOrdersNextBtn">
+                Suivant →
+              </button>
+          </div>
+    </div>
+  </div>
+      <div id="adminProductsSection">
+    <div class="section-title">
+      <h3>Produits</h3>
+      <span class="mini">Création, modification, prix, images et variantes</span>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head panel-head-clean">
+        <div>
+          <h3>Catalogue admin</h3>
+          <div class="mini">
+            Gère les produits visibles sur la boutique. Archiver = masquer sans supprimer l'historique.
+          </div>
+        </div>
+
+        <div class="hero-row">
+          <input
+            class="text"
+            id="adminProductSearch"
+            placeholder="SKU, nom, marque, catégorie"
+            style="min-width:260px;"
+          >
+
+          <button class="btn small" id="refreshProductsBtn" type="button">
+            🔄
+          </button>
+
+          <button class="btn small primary" id="newProductBtn" type="button">
+            ➕ Nouveau produit
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-body" style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>SKU</th>
+              <th>Produit</th>
+              <th>Prix</th>
+              <th>Revendeur</th>
+              <th>Variantes / stock</th>
+              <th>Actif</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="adminProductsTable">
+            <tr>
+              <td colspan="8" class="muted">
+                Section produits prête. Le chargement automatique sera ajouté à l'étape 3A-3.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+          <div class="tablePager" id="adminProductsPager" style="display:none">
+            <button class="btn small" type="button" id="adminProductsPrevBtn">
+              ← Précédent
+            </button>
+
+            <div class="tablePagerInfo" id="adminProductsPagerInfo">
+              Page 1 / 1
+            </div>
+
+            <button class="btn small" type="button" id="adminProductsNextBtn">
+              Suivant →
+            </button>
+          </div>
     </div>
   </div>
 
@@ -480,6 +616,20 @@
           <tbody id="stockTable"></tbody>
         </table>
       </div>
+
+        <div class="tablePager" id="adminInventoryPager" style="display:none">
+          <button class="btn small" type="button" id="adminInventoryPrevBtn">
+            ← Précédent
+          </button>
+
+          <div class="tablePagerInfo" id="adminInventoryPagerInfo">
+            Page 1 / 1
+          </div>
+
+          <button class="btn small" type="button" id="adminInventoryNextBtn">
+            Suivant →
+          </button>
+        </div>
     </div>
   </div>
 
@@ -699,6 +849,161 @@
     <div id="resellerOrderDetailBody" class="muted">Chargement...</div>
   </div>
 </div>
+<div id="productEditorModal" class="modalOverlay" style="display:none">
+  <div class="modalCard productEditorCard">
+    <div class="modalHead">
+      <div>
+        <div class="modalTitle" id="productEditorTitle">Nouveau produit</div>
+        <div class="modalSub">Les variantes se saisissent ligne par ligne : 39=5, M=12, Noir=3.</div>
+      </div>
+      <button class="iconBtn" id="closeProductEditorBtn" type="button" aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="modalBody">
+      <input type="hidden" id="peOldSku">
+
+      <div class="formGrid productEditorGrid">
+       <div>
+          <label>SKU *</label>
+
+          <div class="hero-row" style="gap:8px; align-items:flex-start;">
+            <input class="text" id="peSku" placeholder="Ex: TK-CHA-0001" style="flex:1; min-width:180px;">
+
+            <button class="btn small ghost" type="button" id="generateSkuBtn">
+              Générer
+            </button>
+          </div>
+
+          <div class="hintline" id="peSkuHint" style="margin-top:6px">
+            Le SKU peut être généré automatiquement selon la catégorie.
+          </div>
+       </div>
+
+        <div>
+          <label>Nom produit *</label>
+          <input class="text" id="peName" placeholder="Ex: Sneakers Tchokos Urban">
+        </div>
+
+        <div>
+          <label>Marque</label>
+          <input class="text" id="peBrand" placeholder="Ex: Tchokos">
+        </div>
+
+        <div>
+          <label>Catégorie</label>
+          <select class="select" id="peCategory"></select>
+        </div>
+
+        <div>
+          <label>Tag</label>
+          <input class="text" id="peTag" placeholder="Nouveau, Promo, Best seller">
+        </div>
+        <div>
+          <label>Type de variante</label>
+
+          <select class="select" id="peVariantType">
+            <option value="shoe_size">Pointure chaussure</option>
+            <option value="clothing_size">Taille vêtement</option>
+            <option value="color">Couleur</option>
+            <option value="capacity">Capacité</option>
+            <option value="unique">Unique</option>
+          </select>
+
+          <div class="hintline" id="peVariantTypeHint" style="margin-top:6px"></div>
+
+          <button class="btn small ghost" type="button" id="applyRecommendedVariantBtn" style="margin-top:8px">
+            Appliquer la suggestion
+          </button>
+        </div>
+
+        <div>
+          <label>Prix public FCFA</label>
+          <input class="text" id="peRetailPrice" type="number" min="0" step="1" value="0">
+        </div>
+
+        <div>
+          <label>Prix revendeur FCFA</label>
+          <input class="text" id="peResellerPrice" type="number" min="0" step="1" value="0">
+        </div>
+
+        <div>
+          <label>MOQ revendeur</label>
+          <input class="text" id="peResellerMoq" type="number" min="1" step="1" value="1">
+        </div>
+
+        <div>
+          <label>Image produit</label>
+
+          <div class="productImageEditor">
+            <div class="productImagePreview" id="peImagePreview">
+              <span>Aucune image</span>
+            </div>
+
+            <div class="productImageControls">
+              <input class="text" id="peImage" type="file" accept="image/*">
+
+              <div class="mini" id="peImageHint"></div>
+
+              <button class="btn small ghost" type="button" id="clearSelectedImageBtn">
+                Retirer le fichier choisi
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+          <label>Description</label>
+
+          <textarea
+            class="text"
+            id="peDescription"
+            rows="5"
+            placeholder="Description courte du produit"
+          ></textarea>
+
+          <div class="productTechHelper">
+            <div class="hintline" id="peTechTemplateHint">
+              Choisis une catégorie pour générer une fiche technique adaptée.
+            </div>
+
+            <div class="hero-row" style="margin-top:8px; gap:8px;">
+              <button class="btn small ghost" type="button" id="fillTechTemplateBtn">
+                🧩 Ajouter modèle fiche technique
+              </button>
+
+              <button class="btn small ghost" type="button" id="replaceTechTemplateBtn">
+                🔁 Remplacer par modèle
+              </button>
+            </div>
+          </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>Variantes et stock *</label>
+        <textarea class="text" id="peVariants" rows="6" placeholder="39=5
+40=8
+41=3"></textarea>
+        <div class="hintline" style="margin-top:6px">
+          Format accepté : option=stock. Exemple chaussure : 39=5. Exemple vêtement : M=12. Exemple couleur : Noir=4.
+        </div>
+      </div>
+
+      <label class="productActiveLine">
+        <input type="checkbox" id="peIsActive" checked>
+        Produit actif / visible dans la boutique
+      </label>
+
+      <div class="note" id="productEditorNote" style="display:none"></div>
+    </div>
+
+    <div class="modalFoot">
+      <button class="btn" id="cancelProductEditorBtn" type="button">Annuler</button>
+      <button class="btn primary" id="saveProductBtn" type="button">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <script src="{% static 'assets/app.js' %}" defer></script>
 
 </body>
