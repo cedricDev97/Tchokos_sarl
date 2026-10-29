@@ -253,3 +253,91 @@ select:focus,
 #pageShop .catalogActions .btn {
   min-height: 42px !important;
 }
+
+
+/* EKAKO NAVIGATION UNIFIEE V1 */
+
+header .topbar {
+  max-width: 1380px;
+  flex-wrap: nowrap;
+  gap: 22px;
+}
+
+header .brand {
+  flex-shrink: 0;
+}
+
+header .brand .ekako-brand-logo {
+  width: 148px;
+}
+
+header .brand .ekako-brand-tagline {
+  display: none !important;
+}
+
+header .actions {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+header .ekako-store-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: auto;
+  gap: 3px;
+}
+
+header .ekako-store-nav .tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  padding: 11px 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Les informations restent dans le DOM pour le JavaScript */
+header .actions > .chip {
+  display: none !important;
+}
+
+header .actions > .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  header .topbar {
+    flex-wrap: wrap;
+  }
+
+  header .actions {
+    width: 100%;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  header .ekako-store-nav {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+}
+
+@media (max-width: 600px) {
+  header .ekako-store-nav .tab {
+    font-size: 12px;
+    padding: 10px;
+  }
+}

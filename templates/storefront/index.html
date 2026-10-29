@@ -28,13 +28,13 @@
     </div>
 
     <div class="actions">
-      <div class="tabs">
+      <nav class="tabs ekako-store-nav" aria-label="Navigation principale">
         <a class="tab" href="{% url 'home' %}">Accueil</a>
-        <div class="tab active" id="tabShop">🛍️ Boutique</div>
-        <div class="tab" id="tabReseller">🏷️ Revendeur</div>
-        <div class="tab" id="tabTrack">📦 Suivi</div>
-        <div class="tab" id="tabAdmin">📊 Dashboard</div>
-      </div>
+        <button type="button" class="tab active" id="tabShop">Boutique</button>
+        <button type="button" class="tab" id="tabReseller">eKAKO Pro</button>
+        <button type="button" class="tab" id="tabTrack">Suivi de commande</button>
+        <button type="button" class="tab" id="tabAdmin">Dashboard</button>
+      </nav>
 
       <div class="chip"><span>Role:</span><strong id="roleLabel">Visiteur</strong></div>
       <div class="chip"><span>Tarif:</span><strong id="modeLabel">Detail</strong></div>
