@@ -2483,3 +2483,43 @@ a{ color: inherit !important; }
 .catalogActions .btn{
   min-height:42px !important;
 }
+
+
+/* ===== eKAKO — IDENTITÉ OFFICIELLE ===== */
+:root {
+  --ekako-orange: #F15A24;
+  --ekako-green: #0B8F6A;
+  --ekako-charcoal: #111318;
+  --ekako-cream: #F8F6F1;
+}
+
+.brand .ekako-brand-home {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.brand .ekako-brand-logo {
+  width: 148px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.brand .ekako-brand-tagline {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ekako-charcoal);
+}
+
+@media (max-width: 640px) {
+  .brand .ekako-brand-logo {
+    width: 124px;
+  }
+
+  .brand .ekako-brand-tagline {
+    display: none;
+  }
+}

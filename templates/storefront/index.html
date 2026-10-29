@@ -5,7 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>Site e-commerce – Tchokos Sarl</title>
+  <title>eKAKO | Le commerce d'ici, autrement</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'assets/brand/ekako_favicon_appicon.svg' %}">
   <link rel="stylesheet" href="{% static 'assets/app.css' %}">
   
 
@@ -15,11 +16,14 @@
 <header>
   <div class="topbar">
     <div class="brand">
-      <div class="logo">T</div>
-      <div>
-        <h1>Tchokos — e-commerce</h1>
-        <p>C'est difficile mais c'est possible</p>
-      </div>
+      <a href="/" class="ekako-brand-home" aria-label="eKAKO - Accueil">
+        <img
+          src="{% static 'assets/brand/ekako_master_color_no_tagline.svg' %}"
+          alt="eKAKO"
+          class="ekako-brand-logo"
+        >
+      </a>
+      <p class="ekako-brand-tagline">Le commerce d'ici, autrement.</p>
     </div>
 
     <div class="actions">
