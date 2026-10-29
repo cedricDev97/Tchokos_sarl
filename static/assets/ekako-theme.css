@@ -197,3 +197,59 @@ select:focus,
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== eKAKO : CATALOGUE PRIORITAIRE V1 ===== */
+
+@media (min-width: 1101px) {
+  #pageShop > .grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 340px !important;
+    gap: 24px !important;
+    align-items: start;
+  }
+
+  #pageShop > .grid > section {
+    min-width: 0;
+  }
+
+  #pageShop .sidebar {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #pageShop .products {
+    gap: 16px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  #pageShop > .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #pageShop .sidebar {
+    position: static !important;
+  }
+}
+
+
+
+/* eKAKO — CARTES COMPACTES V1 */
+
+#pageShop .catalogCard {
+  height: auto !important;
+  min-height: 420px !important;
+}
+
+#pageShop .catalogBody {
+  min-height: 0 !important;
+}
+
+#pageShop .catalogActions {
+  min-height: 0 !important;
+  margin-top: 14px !important;
+}
+
+#pageShop .catalogActions .btn {
+  min-height: 42px !important;
+}
