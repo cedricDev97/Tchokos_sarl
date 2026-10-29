@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.urls import path, include
-from storefront.views import home
+from storefront.views import home, boutique
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", home, name="home"),
+    path("boutique/", boutique, name="boutique"),
     path("api/", include("catalog.urls")),
     path("api/", include("orders.urls")),
     path("api/", include("accounts.urls")),

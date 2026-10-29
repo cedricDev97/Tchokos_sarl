@@ -4244,7 +4244,9 @@ async function submitRegisterFromModal(){
   await syncRoleFromBackend();
   await refreshResellerStatus();
   renderAll();
-  goTab("shop");
+  const desired = new URLSearchParams(window.location.search).get("section");
+  const startTab = { reseller: "reseller", track: "track" }[desired] || "shop";
+  goTab(startTab);
 })();
 
 

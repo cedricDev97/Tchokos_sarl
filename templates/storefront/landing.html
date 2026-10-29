@@ -1,0 +1,97 @@
+{% load static %}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="eKAKO, projet de commerce en ligne et livraison urbaine à Yaoundé. Découvrez les produits de commerçants partenaires et l'espace revendeurs.">
+  <title>eKAKO — Le commerce d'ici, autrement.</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'assets/brand/ekako_favicon_appicon.svg' %}">
+  <link rel="stylesheet" href="{% static 'assets/ekako-home.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-wrap" aria-label="Navigation principale">
+      <a class="brand" href="{% url 'home' %}" aria-label="eKAKO, accueil">
+        <img src="{% static 'assets/brand/ekako_master_color_no_tagline.svg' %}" alt="eKAKO" width="156" height="48">
+      </a>
+      <div class="nav-links">
+        <a href="{% url 'boutique' %}">Boutique</a>
+        <a href="#bonplans">BonPlans</a>
+        <a href="{% url 'boutique' %}?section=reseller">eKAKO Pro</a>
+        <a href="{% url 'boutique' %}?section=track">Suivi de commande</a>
+      </div>
+      <a class="nav-cta" href="{% url 'boutique' %}">Explorer la boutique <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="intro wrap" aria-labelledby="hero-title">
+      <div class="intro-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Commerce digital · Yaoundé</p>
+        <h1 id="hero-title">Le commerce d'ici, <em>autrement.</em></h1>
+        <p class="lead">Une nouvelle manière de découvrir les produits des commerçants, de commander et de préparer sa livraison en toute simplicité.</p>
+        <div class="intro-actions">
+          <a class="button button-primary" href="{% url 'boutique' %}">Découvrir les produits <span aria-hidden="true">→</span></a>
+          <a class="button button-outline" href="{% url 'boutique' %}?section=reseller">Je suis revendeur</a>
+        </div>
+        <div class="intro-note">Projet eKAKO · Marketplace, réseau de partenaires et livraison urbaine</div>
+      </div>
+      <div class="intro-visual" aria-label="Les trois étapes de l’expérience eKAKO">
+        <div class="visual-mark"><img src="{% static 'assets/brand/ekako_favicon_appicon.svg' %}" alt="Icône officielle eKAKO" width="70" height="70"></div>
+        <div class="visual-title">Tout commence ici.</div>
+        <div class="step-list">
+          <div class="step"><span>01</span><div><strong>Découvrez</strong><small>Des produits de commerçants partenaires</small></div></div>
+          <div class="step"><span>02</span><div><strong>Commandez</strong><small>Une expérience d'achat en ligne simplifiée</small></div></div>
+          <div class="step"><span>03</span><div><strong>Recevez</strong><small>Un service de livraison locale prévu à Yaoundé</small></div></div>
+        </div>
+        <span class="visual-corner" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <section class="wrap categories" aria-labelledby="categories-title">
+      <div class="heading"><div><span class="section-kicker">À explorer</span><h2 id="categories-title">Trouvez votre prochaine découverte</h2></div><a class="inline-link" href="{% url 'boutique' %}">Tout le catalogue →</a></div>
+      <div class="category-grid">
+        <a class="category-card" href="{% url 'boutique' %}"><span class="category-icon" aria-hidden="true">◈</span><strong>Mode & vêtements</strong><small>Explorez la boutique →</small></a>
+        <a class="category-card" href="{% url 'boutique' %}"><span class="category-icon" aria-hidden="true">✳</span><strong>Chaussures</strong><small>Explorez la boutique →</small></a>
+        <a class="category-card" href="{% url 'boutique' %}"><span class="category-icon" aria-hidden="true">▦</span><strong>Autres découvertes</strong><small>Explorez la boutique →</small></a>
+      </div>
+    </section>
+
+    <section class="wrap featured" aria-labelledby="featured-title">
+      <div class="heading"><div><span class="section-kicker">La vitrine eKAKO</span><h2 id="featured-title">Produits à découvrir</h2></div><a class="inline-link" href="{% url 'boutique' %}">Voir la boutique →</a></div>
+      <div class="products-grid">
+        {% for product in featured_products %}
+          <article class="product-card">
+            <a class="product-photo" href="{% url 'boutique' %}" aria-label="Voir {{ product.name }} dans la boutique">
+              {% if product.image %}
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">
+              {% else %}
+                <span class="photo-placeholder">eKAKO</span>
+              {% endif %}
+              {% if product.tag %}<span class="product-tag">{{ product.tag }}</span>{% endif %}
+            </a>
+            <div class="product-info"><p class="product-brand">{{ product.brand|default:"Sélection eKAKO" }}</p><h3>{{ product.name }}</h3>
+              <div class="product-bottom"><strong>{% if product.retail_price %}{{ product.retail_price }} FCFA{% else %}Prix sur demande{% endif %}</strong><a href="{% url 'boutique' %}" aria-label="Explorer la boutique">↗</a></div>
+            </div>
+          </article>
+        {% empty %}
+          <div class="empty-products">Les produits du catalogue apparaîtront ici dès leur publication.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="wrap promo" id="bonplans" aria-labelledby="bonplans-title">
+      <div><span class="promo-eyebrow">BONPLANS eKAKO</span><h2 id="bonplans-title">La bonne trouvaille, au bon moment.</h2><p>Retrouvez les sélections et les promotions lorsqu'elles sont publiées dans la boutique.</p></div>
+      <a class="button button-light" href="{% url 'boutique' %}">Voir les produits →</a>
+    </section>
+
+    <section class="wrap pro" aria-labelledby="pro-title">
+      <div><span class="section-kicker">eKAKO Pro</span><h2 id="pro-title">Vous êtes revendeur ?</h2><p>Un espace dédié aux commandes professionnelles, aux tarifs revendeurs et aux achats en quantité.</p></div>
+      <a class="button button-primary" href="{% url 'boutique' %}?section=reseller">Découvrir eKAKO Pro →</a>
+    </section>
+  </main>
+
+  <footer class="footer"><div class="wrap footer-inner"><strong>eKAKO</strong><span>Le commerce d'ici, autrement. · Yaoundé, Cameroun</span><a href="{% url 'boutique' %}?section=track">Suivre ma commande →</a></div></footer>
+</body>
+</html>
