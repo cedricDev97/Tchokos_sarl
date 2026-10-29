@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="{% static 'assets/brand/ekako_favicon_appicon.svg' %}">
   <link rel="stylesheet" href="{% static 'assets/app.css' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-theme.css' %}">
-  
+
 
 </head>
 <body>
@@ -42,7 +42,7 @@
       <button class="btn small" id="loginBtn">🔑 Login</button>
       <button class="btn small ghost" id="logoutBtn">🚪 Logout</button>
       <button class="btn" id="applyResellerBtn">🤝 Devenir revendeur</button>
-      <button class="btn primary" id="openCheckoutBtn">🧾 Checkout</button>
+      <button type="button" class="btn primary" id="openCheckoutBtn" aria-controls="ekakoCartDrawer" aria-expanded="false">🛒 Panier <span id="ekakoCartCount" class="ekako-cart-count" aria-label="Nombre d'articles">0</span></button>
     </div>
   </div>
 </header>
@@ -86,74 +86,7 @@
         <div id="productDetailMount" class="muted">Aucune fiche selectionnee.</div>
       </section>
 
-      <aside class="sidebar">
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Panier</h3>
-            <div class="hero-row">
-              <button class="btn small ghost" id="goTrackBtn">📦 Suivi</button>
-              <button class="btn small danger" id="clearCartBtn">Vider</button>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div class="muted">
-              Livraison calculée selon <strong>Ville + Quartier</strong>. MOQ revendeur verifie par SKU. Stock gere par taille.
-            </div>
 
-            <div class="cart-items" id="cartItems" style="margin-top:10px"></div>
-
-            <div class="summary">
-              <div class="row"><span>Sous-total</span><span id="subtotal">0 FCFA</span></div>
-              <div class="row"><span>Livraison</span><span id="shipping">0 FCFA</span></div>
-              <div class="row"><strong>Total</strong><strong id="total">0 FCFA</strong></div>
-
-              <button class="btn primary" id="checkoutBtn" style="margin-top:8px">✅ Passer au paiement</button>
-
-              <div class="checkout" id="checkoutSection">
-                <div class="checkout-grid">
-                  <div><label>Nom complet</label><input class="text" id="cName" placeholder="Ex: Junior N." /></div>
-                  <div><label>Telephone</label><input class="text" id="cPhone" placeholder="Ex: 6xx xx xx xx" /></div>
-
-                  <div>
-                    <label>Ville</label>
-                    <select id="cCity"></select>
-                    <div class="hintline" id="shipHint"></div>
-                  </div>
-                  <div>
-                    <label>Quartier</label>
-                    <select id="cQuarter"></select>
-                    <div class="hintline" id="quarterHint"></div>
-                  </div>
-
-                  <div><label>Adresse / details</label><input class="text" id="cAddr" placeholder="Ex: Rue, immeuble, repere..." /></div>
-                  <div>
-                    <label>Mode de paiement</label>
-                    <select id="cPay">
-                      <option>MTN Mobile Money</option>
-                      <option>Orange Money</option>
-                      <option>Paiement a la livraison (optionnel)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="paybox">
-                  <div class="muted">Demo : paiement simule → cree commande → decrement stock tailles.</div>
-                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">💳 Payer maintenant (demo)</button>
-
-                  <div class="success" id="successBox">
-                    ✅ Paiement simule OK. N° commande : <strong id="orderNo"></strong><br/>
-                    Va dans Dashboard pour voir KPIs + export CSV.
-                  </div>
-
-                  <button class="btn" style="width:100%;justify-content:center;margin-top:10px" id="copyOrderBtn">📋 Copier le N° de commande</button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-                
-        </div>
-      </aside>
     </div>
   </section>
 
@@ -643,6 +576,76 @@
   </section>
 
 </main>
+<button type="button" id="ekakoCartBackdrop" class="ekako-cart-backdrop" aria-label="Fermer le panier" hidden></button>
+<aside class="sidebar ekako-cart-drawer" id="ekakoCartDrawer" role="dialog" aria-modal="true" aria-labelledby="ekakoCartTitle" aria-hidden="true" tabindex="-1">
+        <div class="panel">
+          <div class="panel-head">
+            <h3 id="ekakoCartTitle">Votre panier</h3>
+            <button type="button" class="btn small ghost" id="closeCartDrawerBtn" aria-label="Fermer le panier">✕ Fermer</button>
+            <div class="hero-row">
+              <button class="btn small ghost" id="goTrackBtn">📦 Suivi</button>
+              <button class="btn small danger" id="clearCartBtn">Vider</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="muted">
+              Livraison calculée selon <strong>Ville + Quartier</strong>. MOQ revendeur verifie par SKU. Stock gere par taille.
+            </div>
+
+            <div class="cart-items" id="cartItems" style="margin-top:10px"></div>
+
+            <div class="summary">
+              <div class="row"><span>Sous-total</span><span id="subtotal">0 FCFA</span></div>
+              <div class="row"><span>Livraison</span><span id="shipping">0 FCFA</span></div>
+              <div class="row"><strong>Total</strong><strong id="total">0 FCFA</strong></div>
+
+              <button class="btn primary" id="checkoutBtn" style="margin-top:8px">✅ Passer au paiement</button>
+
+              <div class="checkout" id="checkoutSection">
+                <div class="checkout-grid">
+                  <div><label>Nom complet</label><input class="text" id="cName" placeholder="Ex: Junior N." /></div>
+                  <div><label>Telephone</label><input class="text" id="cPhone" placeholder="Ex: 6xx xx xx xx" /></div>
+
+                  <div>
+                    <label>Ville</label>
+                    <select id="cCity"></select>
+                    <div class="hintline" id="shipHint"></div>
+                  </div>
+                  <div>
+                    <label>Quartier</label>
+                    <select id="cQuarter"></select>
+                    <div class="hintline" id="quarterHint"></div>
+                  </div>
+
+                  <div><label>Adresse / details</label><input class="text" id="cAddr" placeholder="Ex: Rue, immeuble, repere..." /></div>
+                  <div>
+                    <label>Mode de paiement</label>
+                    <select id="cPay">
+                      <option>MTN Mobile Money</option>
+                      <option>Orange Money</option>
+                      <option>Paiement a la livraison (optionnel)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="paybox">
+                  <div class="muted">Mode test : crée une commande non payée et réduit le stock. Aucun paiement réel.</div>
+                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">🧾 Enregistrer une commande test</button>
+
+                  <div class="success" id="successBox">
+                    ✅ Commande test enregistrée (non payée). N° commande : <strong id="orderNo"></strong><br/>
+                    Va dans Dashboard pour voir KPIs + export CSV.
+                  </div>
+
+                  <button class="btn" style="width:100%;justify-content:center;margin-top:10px" id="copyOrderBtn">📋 Copier le N° de commande</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </aside>
 <div id="resellerModal" class="modalOverlay" style="display:none">
   <div class="modalCard">
     <div class="modalHead">
@@ -817,14 +820,14 @@
 <div id="checkoutSuccessModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center;">
   <div style="width:min(520px,92vw); background:#fff; border-radius:18px; padding:20px; max-height:90vh; overflow:auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-      <div style="font-weight:900; font-size:20px;">✅ Commande confirmée</div>
+      <div style="font-weight:900; font-size:20px;">✅ Commande de test enregistrée</div>
       <button class="btn small" id="closeCheckoutSuccessBtn">✖</button>
     </div>
 
     <div class="hr"></div>
 
     <div style="display:flex; flex-direction:column; gap:10px;">
-      <div class="muted">Ta commande a été enregistrée avec succès.</div>
+      <div class="muted">Commande enregistrée en mode test. Aucun paiement Mobile Money n'a été effectué.</div>
 
       <div class="row" style="justify-content:space-between;">
         <div class="muted">Numéro de commande</div>

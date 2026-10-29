@@ -2088,6 +2088,7 @@ function syncRoleUI(){
   function saveOrders(list){ localStorage.setItem(LS.ORDERS, JSON.stringify(list)); }
 
   function goTab(tab){
+    closeEkakoCartDrawer();
     ["tabShop","tabReseller","tabTrack","tabAdmin"].forEach(id=>byId(id).classList.remove("active"));
     byId("tab"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("active");
     ["pageShop","pageReseller","pageTrack","pageAdmin"].forEach(id=>byId(id).classList.remove("active"));
@@ -2844,6 +2845,7 @@ function renderResellerSummary(list){
   else cart.push({sku, size: option, qty, source});
 
   renderCart();
+  openEkakoCartDrawer();
 }
   function updateQty(idx, delta){
     const item = cart[idx];
@@ -2872,6 +2874,7 @@ function renderResellerSummary(list){
   }
 
   function openCheckoutSuccessModal(orderNo, total){
+  closeEkakoCartDrawer();
   if(byId("successOrderNo")) byId("successOrderNo").textContent = orderNo || "—";
   if(byId("successOrderTotal")) byId("successOrderTotal").textContent = money(total || 0);
   if(byId("checkoutSuccessModal")) byId("checkoutSuccessModal").style.display = "flex";
@@ -2931,7 +2934,16 @@ async function loadResellerStats(){
 }
 
   function renderCart(){
+    const counter = byId("ekakoCartCount");
+    if(counter){
+      const qty = cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+      counter.textContent = String(qty);
+    }
   const wrap = byId("cartItems");
+  if(cart.length === 0 && byId("checkoutSection")){
+    byId("checkoutSection").style.display = "none";
+  }
+
   wrap.innerHTML = "";
 
   cart.forEach((i, idx)=>{
@@ -3004,8 +3016,69 @@ async function loadResellerStats(){
   renderProductDetail();
 }
 
+  // PANIER COULISSANT eKAKO V1 (fonctions internes à la boutique).
+  let ekakoCartPreviousFocus = null;
+
+  function setupEkakoCartDrawer(){
+    const drawer = byId("ekakoCartDrawer");
+    if(!drawer) return;
+    // Le panneau est indépendant de #pageShop : accessible depuis toutes les sections.
+    if(drawer.parentElement !== document.body) document.body.appendChild(drawer);
+
+    byId("closeCartDrawerBtn")?.addEventListener("click", closeEkakoCartDrawer);
+    byId("ekakoCartBackdrop")?.addEventListener("click", closeEkakoCartDrawer);
+    document.addEventListener("keydown", (event) => {
+      if(!drawer.classList.contains("is-open")) return;
+      if(byId("checkoutSuccessModal")?.style.display === "flex") return;
+      if(event.key === "Escape") {
+        event.preventDefault();
+        closeEkakoCartDrawer();
+        return;
+      }
+      if(event.key !== "Tab") return;
+      const nodes = [...drawer.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(node => node.getClientRects().length > 0);
+      if(!nodes.length){ event.preventDefault(); drawer.focus(); return; }
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if(event.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if(!event.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    });
+  }
+
+  function openEkakoCartDrawer(){
+    const drawer = byId("ekakoCartDrawer");
+    const backdrop = byId("ekakoCartBackdrop");
+    if(!drawer || !backdrop) return;
+    if(!drawer.classList.contains("is-open")) ekakoCartPreviousFocus = document.activeElement;
+    backdrop.hidden = false;
+    drawer.setAttribute("aria-hidden", "false");
+    drawer.classList.add("is-open");
+    document.body.classList.add("ekako-cart-open");
+    byId("openCheckoutBtn")?.setAttribute("aria-expanded", "true");
+    byId("closeCartDrawerBtn")?.focus();
+  }
+
+  function closeEkakoCartDrawer(){
+    const drawer = byId("ekakoCartDrawer");
+    const backdrop = byId("ekakoCartBackdrop");
+    if(!drawer) return;
+    if(!drawer.classList.contains("is-open")) return;
+    drawer.classList.remove("is-open");
+    drawer.setAttribute("aria-hidden", "true");
+    if(backdrop) backdrop.hidden = true;
+    document.body.classList.remove("ekako-cart-open");
+    byId("openCheckoutBtn")?.setAttribute("aria-expanded", "false");
+    const focus = ekakoCartPreviousFocus;
+    ekakoCartPreviousFocus = null;
+    if(focus && focus.isConnected && typeof focus.focus === "function") focus.focus();
+  }
+
   function openCheckout(){
     if(cart.length===0){ alert("Panier vide."); return; }
+    openEkakoCartDrawer();
     byId("checkoutSection").style.display = "block";
     byId("checkoutSection").scrollIntoView({behavior:"smooth", block:"start"});
     renderCart();
@@ -4411,6 +4484,8 @@ async function submitResellerApplication(){
 
  
 
+  setupEkakoCartDrawer();
+
   // Events
   byId("loginBtn")?.addEventListener("click", openLogin);
   byId("logoutBtn")?.addEventListener("click", logout);
@@ -4435,7 +4510,7 @@ byId("catFilter")?.addEventListener("change", (e) => {
 });
 
   byId("checkoutBtn")?.addEventListener("click", openCheckout);
-  byId("openCheckoutBtn")?.addEventListener("click", openCheckout);
+  byId("openCheckoutBtn")?.addEventListener("click", openEkakoCartDrawer);
   byId("payNowBtn")?.addEventListener("click", payNow);
   byId("copyOrderBtn")?.addEventListener("click", copyOrderNo);
 

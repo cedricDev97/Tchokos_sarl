@@ -341,3 +341,104 @@ header .actions > .btn {
     padding: 10px;
   }
 }
+
+
+/* EKAKO PANIER COULISSANT V1 */
+#pageShop > .grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+#pageShop > .grid > section {
+  min-width: 0;
+}
+@media (min-width: 1200px) {
+  #pageShop .products {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 760px) and (max-width: 1199px) {
+  #pageShop .products {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 481px) and (max-width: 759px) {
+  #pageShop .products {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 480px) {
+  #pageShop .products {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+.ekako-cart-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  background: rgba(255,255,255,.2);
+  padding: 2px 7px;
+}
+.ekako-cart-backdrop[hidden] { display: none !important; }
+.ekako-cart-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  background: rgba(17,19,24,.52);
+}
+body.ekako-cart-open { overflow: hidden; }
+.ekako-cart-drawer {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  bottom: 0 !important;
+  z-index: 1101 !important;
+  width: min(480px, 100vw) !important;
+  max-width: none !important;
+  height: 100vh;
+  height: 100dvh;
+  background: #FFFFFF;
+  border-radius: 20px 0 0 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: -18px 0 55px rgba(17,19,24,.17);
+  transform: translateX(105%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .25s ease, visibility .25s ease;
+}
+.ekako-cart-drawer.is-open {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+.ekako-cart-drawer > .panel {
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0;
+  overflow: visible;
+}
+.ekako-cart-drawer .panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #FFFFFF;
+}
+.ekako-cart-drawer .panel-head h3 { font-size: 18px; }
+.ekako-cart-drawer #closeCartDrawerBtn { margin-left: auto; }
+.ekako-cart-drawer .panel-body { padding-bottom: 36px; }
+@media (max-width: 540px) {
+  .ekako-cart-drawer { border-radius: 0; }
+  .ekako-cart-drawer .panel-head { padding-top: max(14px, env(safe-area-inset-top)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ekako-cart-drawer { transition: none; }
+}
