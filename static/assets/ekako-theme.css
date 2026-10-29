@@ -162,3 +162,38 @@ select:focus,
     padding: 14px;
   }
 }
+
+
+/* eKAKO — FILTRES COMPACTS V1 */
+#pageShop > .grid > section > .hero-row {
+  display: grid !important;
+  grid-template-columns:
+    minmax(180px, 1.5fr)
+    repeat(3, minmax(118px, 1fr));
+  gap: 8px !important;
+  align-items: stretch;
+}
+
+#pageShop > .grid > section > .hero-row > * {
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+#pageShop > .grid > section > .hero-row .input,
+#pageShop > .grid > section > .hero-row .select {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+@media (max-width: 1150px) {
+  #pageShop > .grid > section > .hero-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  #pageShop > .grid > section > .hero-row {
+    grid-template-columns: 1fr;
+  }
+}
