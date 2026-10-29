@@ -1,0 +1,164 @@
+/* eKAKO — Thème graphique officiel V1 */
+:root {
+  --ekako-orange: #F15A24;
+  --ekako-green: #0B8F6A;
+  --ekako-charcoal: #111318;
+  --ekako-cream: #F8F6F1;
+  --ekako-muted: #6F746F;
+
+  --bg: #F8F6F1 !important;
+  --text: #111318 !important;
+  --muted: #6F746F !important;
+  --line: #E9E5DF !important;
+  --accent: #F15A24 !important;
+  --accent2: #0B8F6A !important;
+  --card: #FFFFFF !important;
+}
+
+body {
+  background: var(--ekako-cream) !important;
+  color: var(--ekako-charcoal) !important;
+}
+
+/* En-tête */
+header {
+  background: rgba(255,255,255,.96) !important;
+  border-bottom: 1px solid #E9E5DF !important;
+  box-shadow: 0 2px 14px rgba(17,19,24,.035);
+}
+
+header .topbar {
+  gap: 18px;
+  padding: 16px 24px;
+}
+
+header .brand {
+  gap: 12px;
+}
+
+header .brand .ekako-brand-tagline {
+  color: var(--ekako-muted) !important;
+  font-weight: 500;
+}
+
+/* Navigation */
+header .tabs {
+  gap: 5px;
+}
+
+header .tab {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px;
+  color: var(--ekako-charcoal);
+  font-weight: 600;
+  transition: background .2s, color .2s;
+}
+
+header .tab:hover {
+  background: #F8F6F1 !important;
+  color: var(--ekako-orange);
+}
+
+header .tab.active {
+  background: #FFF0E9 !important;
+  border-color: #FFD8C7 !important;
+  color: #B83D12 !important;
+}
+
+header .chip {
+  background: #F8F6F1 !important;
+  border-color: #E9E5DF !important;
+}
+
+/* Boutons */
+.btn {
+  border-radius: 11px;
+  font-weight: 600;
+  transition: background .2s, border-color .2s;
+}
+
+.btn:hover {
+  border-color: var(--ekako-orange) !important;
+}
+
+.btn.primary {
+  background: var(--ekako-orange) !important;
+  border-color: var(--ekako-orange) !important;
+  color: #FFFFFF !important;
+}
+
+.btn.primary:hover {
+  background: #D94B19 !important;
+  border-color: #D94B19 !important;
+  color: #FFFFFF !important;
+}
+
+.btn:focus-visible,
+.tab:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(241,90,36,.30);
+  outline-offset: 2px;
+}
+
+/* Présentation principale */
+.hero {
+  background: linear-gradient(
+    120deg, #FFFFFF 35%, #FFF3ED 100%
+  ) !important;
+  border: 1px solid #F0E5DD !important;
+  box-shadow: 0 8px 30px rgba(17,19,24,.035) !important;
+}
+
+.hero h2 {
+  color: var(--ekako-charcoal) !important;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.hero .sub {
+  color: var(--ekako-muted) !important;
+}
+
+.panel {
+  border-color: #E9E5DF !important;
+  box-shadow: 0 6px 22px rgba(17,19,24,.035) !important;
+}
+
+.section-title h3 {
+  color: var(--ekako-charcoal) !important;
+}
+
+/* Formulaires */
+.input:focus-within,
+select:focus,
+.text:focus {
+  border-color: var(--ekako-orange) !important;
+  box-shadow: 0 0 0 3px rgba(241,90,36,.10) !important;
+}
+
+/* Adaptation mobile */
+@media (max-width: 760px) {
+  header .topbar {
+    padding: 12px 14px;
+  }
+
+  header .actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  header .tabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  header .tab {
+    padding: 9px 10px;
+  }
+
+  .container {
+    padding: 14px;
+  }
+}
