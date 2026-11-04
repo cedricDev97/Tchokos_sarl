@@ -7,7 +7,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.decorators import user_passes_test
 
 from accounts.permissions import can_manage_inventory
-from .models import Product, Size, Variant
+from .models import Product, Size, Variant, ProductGalleryImage
+from PIL import Image, UnidentifiedImageError
 
 
 def product_payload(request, p):
@@ -22,7 +23,14 @@ def product_payload(request, p):
         "retail_price": int(p.retail_price or 0),
         "reseller_price": int(p.reseller_price or 0),
         "reseller_moq": int(p.reseller_moq or 1),
-        "image_url": request.build_absolute_uri(p.image.url) if p.image else None,
+        "image_url": request.build_absolute_uri(p.image.url) if p.image else (
+            request.build_absolute_uri(p.gallery_images.all()[0].image.url)
+            if p.gallery_images.all() else None
+        ),
+        "gallery_images": [
+            {"id": image.id, "url": request.build_absolute_uri(image.image.url), "position": image.position}
+            for image in p.gallery_images.all()
+        ],
         "variant_type": p.variant_type,
         "is_active": bool(p.is_active),
         "variants": [
@@ -39,7 +47,7 @@ def products_api(request):
     qs = (
         Product.objects
         .filter(is_active=True)
-        .prefetch_related("variants__size")
+        .prefetch_related("variants__size", "gallery_images")
         .order_by("name", "sku")
     )
 
@@ -55,7 +63,7 @@ def admin_products_api(request):
 
     qs = (
         Product.objects
-        .prefetch_related("variants__size")
+        .prefetch_related("variants__size", "gallery_images")
         .order_by("-is_active", "name", "sku")
     )
 
@@ -131,6 +139,24 @@ def _load_variants(raw):
     return cleaned
 
 
+
+
+# eKAKO_GALERIE_V1 — validation de photographies supplementaires
+def _validate_gallery_image(upload):
+    if not upload or upload.size <= 0 or upload.size > 5 * 1024 * 1024:
+        raise ValueError("Chaque photo doit peser entre 1 octet et 5 Mo.")
+    try:
+        with Image.open(upload) as img:
+            if img.format not in {"JPEG", "PNG", "WEBP"}:
+                raise ValueError("Format non autorisé. Utilise JPG, PNG ou WebP.")
+            if img.width * img.height > 24_000_000:
+                raise ValueError("Image trop grande (maximum 24 mégapixels).")
+            img.verify()
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as exc:
+        raise ValueError("Image corrompue ou format non reconnu.") from exc
+    finally:
+        upload.seek(0)
+
 @user_passes_test(can_manage_inventory)
 @require_POST
 def admin_save_product_api(request):
@@ -157,6 +183,15 @@ def admin_save_product_api(request):
         reseller_price = _as_int(data.get("reseller_price"), "Prix revendeur", 0)
         reseller_moq = _as_int(data.get("reseller_moq"), "MOQ revendeur", 1)
         variants = _load_variants(data.get("variants_json") or "[]")
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+    gallery_uploads = request.FILES.getlist("gallery_images")
+    if len(gallery_uploads) > 8:
+        return JsonResponse({"ok": False, "error": "8 photos secondaires maximum."}, status=400)
+    try:
+        for upload in gallery_uploads:
+            _validate_gallery_image(upload)
     except ValueError as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
 
@@ -203,6 +238,15 @@ def admin_save_product_api(request):
         except IntegrityError:
             return JsonResponse({"ok": False, "error": "SKU déjà utilisé."}, status=400)
 
+        existing_gallery = product.gallery_images.count()
+        if existing_gallery + len(gallery_uploads) > 8:
+            return JsonResponse({"ok": False, "error": "8 photos secondaires maximum par produit."}, status=400)
+
+        for offset, photo in enumerate(gallery_uploads):
+            ProductGalleryImage.objects.create(
+                product=product, image=photo, position=existing_gallery + offset
+            )
+
         submitted_size_ids = set()
 
         for row in variants:
@@ -222,7 +266,7 @@ def admin_save_product_api(request):
         if old_sku and submitted_size_ids:
             product.variants.exclude(size_id__in=submitted_size_ids).update(stock_qty=0)
 
-    product = Product.objects.prefetch_related("variants__size").get(pk=product.pk)
+    product = Product.objects.prefetch_related("variants__size", "gallery_images").get(pk=product.pk)
 
     return JsonResponse({
         "ok": True,
@@ -255,3 +299,18 @@ def admin_toggle_product_api(request, sku):
         "sku": product.sku,
         "is_active": product.is_active,
     })
+
+# eKAKO_GALERIE_V1 — suppression réservée au gestionnaire de stock
+@user_passes_test(can_manage_inventory)
+@require_POST
+def admin_delete_gallery_image_api(request, image_id: int):
+    image = ProductGalleryImage.objects.filter(pk=image_id).first()
+    if not image:
+        return JsonResponse({"ok": False, "error": "Photo introuvable."}, status=404)
+    # Le fichier est supprimé uniquement après suppression de l'entrée.
+    path = image.image.name
+    storage = image.image.storage
+    image.delete()
+    if path:
+        storage.delete(path)
+    return JsonResponse({"ok": True})

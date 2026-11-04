@@ -976,6 +976,7 @@ function applyRecommendedVariantType(){
       retail: p.retail_price || 0,
       reseller: p.reseller_price || 0,
       image_url: p.image_url || null,
+      gallery_images: Array.isArray(p.gallery_images) ? p.gallery_images : [],
       moq: p.reseller_moq || 1,
       variant_type: p.variant_type || "shoe_size"
     };
@@ -1508,6 +1509,19 @@ function parseProductVariantLines(raw){
   return rows;
 }
 
+// eKAKO_GALERIE_V1 — photos actuelles dans l'éditeur
+function renderExistingProductGallery(product){
+  const mount = byId("peGalleryExisting");
+  if(!mount) return;
+  const images = Array.isArray(product?.gallery_images) ? product.gallery_images : [];
+  mount.innerHTML = images.length
+    ? images.map(item=>`<div class="ekako-gallery-existing-item">
+        <img src="${escapeHtml(item.url)}" alt="Photo complémentaire">
+        <button type="button" data-ekako-image-delete="${Number(item.id)}" aria-label="Supprimer cette photo">✕</button>
+      </div>`).join("")
+    : `<span class="mini">Aucune photo complémentaire enregistrée.</span>`;
+}
+
 function openProductEditor(product){
   const modal = byId("productEditorModal");
 
@@ -1542,6 +1556,8 @@ function openProductEditor(product){
   byId("peDescription").value = product?.description || "";
   byId("peVariants").value = product ? variantLinesFromProduct(product) : "";
   byId("peIsActive").checked = product ? !!product.is_active : true;
+  if(byId("peGalleryImages")) byId("peGalleryImages").value = "";
+  renderExistingProductGallery(product);
 
  if(byId("peImage")){
   byId("peImage").value = "";
@@ -1741,6 +1757,13 @@ async function saveProductFromEditor(){
     if(imageFile){
       fd.append("image", imageFile);
     }
+
+    const extraPhotos = [...(byId("peGalleryImages")?.files || [])];
+    if(extraPhotos.length > 8){
+      showProductEditorNote("8 photos complémentaires maximum.");
+      return;
+    }
+    extraPhotos.forEach(file => fd.append("gallery_images", file));
 
     if(btn){
       btn.disabled = true;
@@ -2802,9 +2825,24 @@ function renderResellerSummary(list){
     const selected = variants[firstIndex] || "";
     const initialStock = selected ? stockOf(p.id,selected) : 0;
     const label = v => escapeHtml(formatVariantValue(p,v));
-    const visual = p.image_url
-      ? `<img class="ekako-pdp-img" src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name || "Produit eKAKO")}">`
+    // eKAKO_GALERIE_V1 — photographie principale puis vues secondaires
+    const photos = [
+      ...(p.image_url ? [{url:p.image_url, label:"Photo principale"}] : []),
+      ...(Array.isArray(p.gallery_images) ? p.gallery_images.map((item,i)=>({url:item.url,label:`Vue ${i+2}`})) : [])
+    ].filter(item=>item.url && typeof item.url === "string")
+     .filter((item,index,array)=>array.findIndex(other=>other.url===item.url)===index);
+    const firstPhoto = photos[0] || null;
+    const visual = firstPhoto
+      ? `<button type="button" class="ekako-gallery-main" id="ekakoGalleryZoomBtn" aria-label="Agrandir la photographie">
+          <img id="ekakoGalleryMainImage" class="ekako-pdp-img" src="${escapeHtml(firstPhoto.url)}" alt="${escapeHtml(p.name || "Produit eKAKO")}">
+        </button>`
       : `<div class="ekako-pdp-placeholder" aria-label="Image non disponible">${escapeHtml(String(p.name || "e").charAt(0).toUpperCase())}</div>`;
+    const galleryThumbnails = photos.length > 1
+      ? `<div class="ekako-gallery-thumbs" role="group" aria-label="Autres vues du produit">
+          ${photos.map((photo,i)=>`<button type="button" data-ekako-gallery="${i}" class="ekako-gallery-thumb ${i===0 ? "is-active" : ""}" aria-pressed="${i===0 ? "true" : "false"}" aria-label="Afficher ${escapeHtml(photo.label)}">
+            <img src="${escapeHtml(photo.url)}" alt="">
+          </button>`).join("")}
+        </div>` : "";
     const title = escapeHtml(p.name || "Produit eKAKO");
     const price = Number(priceOf(p)) || 0;
     const stockText = initialStock <= 0 ? "Rupture de stock" : initialStock < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${initialStock} unité(s) disponible(s)`;
@@ -2818,6 +2856,7 @@ function renderResellerSummary(list){
             ${p.tag ? `<span class="ekako-pdp-category">${escapeHtml(p.tag)}</span>` : ""}
           </div>
           <div class="ekako-pdp-img-wrap">${visual}</div>
+          ${galleryThumbnails}
           <div class="ekako-pdp-visual-footer"><span>eKAKO • Sélection produits</span><span>Réf. ${escapeHtml(p.id)}</span></div>
         </div>
         <div class="ekako-pdp-content">
@@ -2861,6 +2900,30 @@ function renderResellerSummary(list){
           <div class="ekako-pdp-desc"><h3>À propos de ce produit</h3>${renderProductDescription(p.desc)}</div>
         </div>
       </div>`;
+
+    // Gestion des miniatures et du zoom, sans modifier le panier.
+    mount.querySelectorAll("[data-ekako-gallery]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const idx = Number(btn.dataset.ekakoGallery);
+        if(!Number.isInteger(idx) || idx<0 || idx>=photos.length) return;
+        const img = byId("ekakoGalleryMainImage");
+        const zoom = byId("ekakoGalleryZoomBtn");
+        if(!img) return;
+        img.src = photos[idx].url;
+        img.alt = `${p.name || "Produit eKAKO"} — ${photos[idx].label}`;
+        zoom?.classList.remove("is-zoomed");
+        mount.querySelectorAll("[data-ekako-gallery]").forEach(item=>{
+          const selected = item === btn;
+          item.classList.toggle("is-active",selected);
+          item.setAttribute("aria-pressed",String(selected));
+        });
+      });
+    });
+    byId("ekakoGalleryZoomBtn")?.addEventListener("click",(event)=>{
+      event.currentTarget.classList.toggle("is-zoomed");
+      event.currentTarget.setAttribute("aria-label", event.currentTarget.classList.contains("is-zoomed")
+        ? "Réduire la photographie" : "Agrandir la photographie");
+    });
 
     function updatePurchase(){
       const size = normalizeVariantValue(byId("pdSize")?.value);
@@ -5078,6 +5141,31 @@ byId("closeProductEditorBtn")?.addEventListener("click", closeProductEditor);
 byId("cancelProductEditorBtn")?.addEventListener("click", closeProductEditor);
 
 byId("saveProductBtn")?.addEventListener("click", saveProductFromEditor);
+
+byId("peGalleryExisting")?.addEventListener("click", async(event)=>{
+  const btn = event.target.closest("[data-ekako-image-delete]");
+  if(!btn) return;
+  const imageId = Number(btn.dataset.ekakoImageDelete);
+  const current = getCurrentEditorProduct();
+  if(!imageId || !current || !window.confirm("Supprimer cette photo complémentaire ? La suppression est immédiate.")) return;
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`/api/admin/gallery-image/${imageId}/delete/`, {
+      method:"POST", credentials:"same-origin",
+      headers:{"X-CSRFToken":getCookie("csrftoken")}
+    });
+    const data = await resp.json().catch(()=>({}));
+    if(!resp.ok || !data.ok) throw new Error(data.error || "Suppression impossible.");
+    current.gallery_images = (current.gallery_images || []).filter(x=>Number(x.id)!==imageId);
+    renderExistingProductGallery(current);
+    await renderAdminProducts();
+    await loadProductsFromApi();
+    renderProducts();
+  } catch(e) {
+    btn.disabled = false;
+    showProductEditorNote(e.message || "Erreur suppression photo.");
+  }
+});
 
 byId("productEditorModal")?.addEventListener("click", (e) => {
   if(e.target && e.target.id === "productEditorModal"){

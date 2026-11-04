@@ -1,10 +1,16 @@
 from django.contrib import admin
-from .models import Product, Size, Variant
+from .models import Product, Size, Variant, ProductGalleryImage
 
 
 class VariantInline(admin.TabularInline):
     model = Variant
     extra = 0
+
+
+class ProductGalleryInline(admin.TabularInline):
+    model = ProductGalleryImage
+    extra = 1
+    fields = ("image", "position")
 
 
 @admin.register(Product)
@@ -21,7 +27,7 @@ class ProductAdmin(admin.ModelAdmin):
     )
     search_fields = ("sku", "name", "brand", "category")
     list_filter = ("brand", "category", "variant_type", "is_active")
-    inlines = [VariantInline]
+    inlines = [VariantInline, ProductGalleryInline]
 
 
 @admin.register(Size)

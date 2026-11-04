@@ -293,3 +293,70 @@ body.ekako-product-open { overflow: hidden !important; }
     object-fit: contain;
   }
 }
+
+
+/* eKAKO_GALERIE_V1 — miniatures et zoom */
+#ekakoProductModal .ekako-gallery-main {
+  width:100%; height:100%; min-height:0; padding:0; border:0; background:transparent;
+  display:grid; place-items:center; overflow:hidden; cursor:zoom-in; border-radius:14px;
+}
+#ekakoProductModal .ekako-gallery-main.is-zoomed { cursor:zoom-out; }
+#ekakoProductModal .ekako-gallery-main.is-zoomed .ekako-pdp-img,
+#ekakoProductModal .ekako-gallery-main.is-zoomed .ekako-pdp-img:hover {
+  transform:scale(1.6) !important;
+}
+#ekakoProductModal .ekako-gallery-thumbs {
+  display:flex; gap:9px; padding:8px 0 15px; overflow-x:auto;
+  scrollbar-width:thin; overscroll-behavior-x:contain;
+}
+#ekakoProductModal .ekako-gallery-thumb {
+  width:68px; height:68px; flex:0 0 68px; padding:5px; border:2px solid #e6e1d9;
+  border-radius:12px; background:white; cursor:pointer; overflow:hidden;
+}
+#ekakoProductModal .ekako-gallery-thumb.is-active { border-color:#f15a24; }
+#ekakoProductModal .ekako-gallery-thumb img {width:100%;height:100%;object-fit:contain;}
+.ekako-gallery-editor {margin:16px 0; padding:14px; border-radius:14px; background:#f8f6f1; border:1px solid #e9e5df;}
+.ekako-gallery-editor > label {display:block; margin-bottom:8px; font-weight:700;}
+.ekako-gallery-existing {display:flex;flex-wrap:wrap;gap:10px;margin-top:13px;}
+.ekako-gallery-existing-item {position:relative; width:84px;height:84px;border:1px solid #ddd;border-radius:12px;background:#fff;overflow:hidden;}
+.ekako-gallery-existing-item img {width:100%;height:100%;object-fit:contain;}
+.ekako-gallery-existing-item button {position:absolute;right:2px;top:2px;width:27px;height:27px;border:0;border-radius:8px;background:#fff;color:#b42318;cursor:pointer;}
+@media (max-width:760px){
+  #ekakoProductModal .ekako-gallery-thumb {width:56px;height:56px;flex-basis:56px;}
+  #ekakoProductModal .ekako-gallery-thumbs {padding:5px 0 9px;}
+  #ekakoProductModal .ekako-pdp-visual-footer {font-size:10px;}
+}
+@media (prefers-reduced-motion:reduce){
+  #ekakoProductModal .ekako-gallery-main .ekako-pdp-img {transition:none !important;}
+}
+
+/* eKAKO — Galerie premium : espacement final */
+#ekakoProductModal .ekako-pdp-visual {
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: start;
+}
+
+#ekakoProductModal .ekako-pdp-img-wrap {
+  flex: 0 0 auto !important;
+  height: 390px;
+  min-height: 0 !important;
+  margin: 14px 0 10px;
+}
+
+#ekakoProductModal .ekako-gallery-main {
+  height: 100%;
+}
+
+#ekakoProductModal .ekako-gallery-main .ekako-pdp-img {
+  width: 100%;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+@media (max-width: 760px) {
+  #ekakoProductModal .ekako-pdp-img-wrap {
+    height: min(68vw, 260px);
+    margin: 10px 0;
+  }
+}

@@ -52,3 +52,18 @@ class Variant(models.Model):
 
     def __str__(self):
         return f"{self.product.sku} {self.size.label} ({self.stock_qty})"
+
+# eKAKO_GALERIE_V1 — photographies secondaires, image principale conservée
+class ProductGalleryImage(models.Model):
+    product = models.ForeignKey(
+        Product, related_name="gallery_images", on_delete=models.CASCADE
+    )
+    image = models.ImageField(upload_to="products/gallery/")
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return f"{self.product.sku} — photo {self.pk}"
