@@ -21,6 +21,10 @@ class Product(models.Model):
     reseller_price = models.PositiveIntegerField(default=0)
     reseller_moq = models.PositiveIntegerField(default=1)
 
+    # EKAKO_COULEURS_V1 : un SKU par couleur, stock par taille conservé
+    style_group = models.CharField(max_length=70, blank=True, db_index=True)
+    color_name = models.CharField(max_length=50, blank=True)
+
     image = models.ImageField(upload_to="products/", blank=True, null=True)
 
     variant_type = models.CharField(

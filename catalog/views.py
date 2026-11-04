@@ -19,6 +19,9 @@ def product_payload(request, p):
         "brand": p.brand,
         "category": p.category,
         "tag": p.tag,
+        # EKAKO_COULEURS_V1
+        "style_group": p.style_group,
+        "color_name": p.color_name,
         "description": p.description,
         "retail_price": int(p.retail_price or 0),
         "reseller_price": int(p.reseller_price or 0),
@@ -195,6 +198,18 @@ def admin_save_product_api(request):
     except ValueError as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
 
+    # EKAKO_COULEURS_V1 — les 2 champs doivent être renseignés ensemble.
+    style_group = (data.get("style_group") or "").strip().upper()
+    color_name = (data.get("color_name") or "").strip()
+    if bool(style_group) != bool(color_name):
+        return JsonResponse({"ok": False, "error": "Renseigne le groupe et la couleur, ou laisse les deux vides."}, status=400)
+    if len(style_group) > 70 or len(color_name) > 50:
+        return JsonResponse({"ok": False, "error": "Groupe ou couleur trop long."}, status=400)
+    if style_group and Product.objects.filter(
+        style_group__iexact=style_group, color_name__iexact=color_name
+    ).exclude(sku__iexact=old_sku).exists():
+        return JsonResponse({"ok": False, "error": "Cette couleur existe déjà pour ce groupe."}, status=400)
+
     with transaction.atomic():
         if old_sku:
             product = (
@@ -223,6 +238,8 @@ def admin_save_product_api(request):
         product.category = (data.get("category") or "").strip()
         product.tag = (data.get("tag") or "").strip()
         product.description = (data.get("description") or "").strip()
+        product.style_group = style_group  # EKAKO_COULEURS_V1
+        product.color_name = color_name
         product.retail_price = retail_price
         product.reseller_price = reseller_price
         product.reseller_moq = reseller_moq

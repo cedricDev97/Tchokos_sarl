@@ -20,12 +20,14 @@ class ProductAdmin(admin.ModelAdmin):
         "name",
         "brand",
         "category",
+        "style_group",  # EKAKO_COULEURS_V1
+        "color_name",
         "variant_type",
         "retail_price",
         "reseller_price",
         "is_active",
     )
-    search_fields = ("sku", "name", "brand", "category")
+    search_fields = ("sku", "name", "brand", "category", "style_group", "color_name")
     list_filter = ("brand", "category", "variant_type", "is_active")
     inlines = [VariantInline, ProductGalleryInline]
 

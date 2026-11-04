@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="{% static 'assets/ekako-theme.css' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-mobile-menu.css' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-product-premium.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/ekako-cart-product-images.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/ekako-catalog-premium.css' %}">
 
 
 </head>
@@ -905,6 +907,17 @@
         <div>
           <label>Tag</label>
           <input class="text" id="peTag" placeholder="Nouveau, Promo, Best seller">
+        </div>
+        <!-- EKAKO_COULEURS_V1 : chaque couleur possède son SKU et son stock -->
+        <div>
+          <label>Groupe de modèle (même code pour toutes les couleurs)</label>
+          <input class="text" id="peStyleGroup" maxlength="70" placeholder="Ex. PULL-RALF">
+          <div class="hintline">Laisse vide si ce produit n'a pas d'autres couleurs.</div>
+        </div>
+        <div>
+          <label>Couleur de cette référence</label>
+          <input class="text" id="peColorName" maxlength="50" placeholder="Ex. Noir">
+          <div class="hintline">Les tailles et le stock restent propres à cette couleur.</div>
         </div>
         <div>
           <label>Type de variante</label>

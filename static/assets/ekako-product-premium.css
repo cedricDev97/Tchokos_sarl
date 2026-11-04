@@ -360,3 +360,47 @@ body.ekako-product-open { overflow: hidden !important; }
     margin: 10px 0;
   }
 }
+
+
+/* EKAKO_COULEURS_V1 — couleurs réelles reliées à leur SKU */
+#ekakoProductModal .ekako-pdp-color-group {
+  margin: 20px 0 0;
+  padding: 0 0 19px;
+  border-bottom: 1px solid #ede9e3;
+}
+#ekakoProductModal .ekako-pdp-color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 10px;
+}
+#ekakoProductModal .ekako-pdp-color-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px 6px 6px;
+  background: #fff;
+  color: #111318;
+  border: 1px solid #e6e1d9;
+  border-radius: 12px;
+  min-height: 52px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+#ekakoProductModal .ekako-pdp-color-option img {
+  display: block;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  background: #f8f6f1;
+  border-radius: 8px;
+}
+#ekakoProductModal .ekako-pdp-color-option.is-active {
+  border-color: #f15a24;
+  box-shadow: 0 0 0 1px #f15a24;
+}
+#ekakoProductModal .ekako-pdp-color-option:hover { border-color: #f15a24; }
+@media(max-width: 760px) {
+  #ekakoProductModal .ekako-pdp-color-option { min-height: 48px; }
+}

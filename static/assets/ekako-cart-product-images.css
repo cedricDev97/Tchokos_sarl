@@ -1,0 +1,67 @@
+/* eKAKO — Images réelles des articles dans le panier V1. */
+#ekakoCartDrawer .cart-item {
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff !important;
+  border: 1px solid #ece6dd !important;
+  border-radius: 16px;
+}
+#ekakoCartDrawer .cart-item > .left {
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+}
+#ekakoCartDrawer .cart-item > .left > div:last-child { min-width: 0; }
+#ekakoCartDrawer .cart-item > div:last-child { flex: 0 0 auto; text-align: right; }
+#ekakoCartDrawer .cart-item .thumb.ekako-cart-product-thumb {
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 66px;
+  width: 66px !important;
+  height: 66px !important;
+  border-radius: 13px;
+  border: 1px solid #ebe3d8 !important;
+  background: #f8f6f1 !important;
+  display: grid;
+  place-items: center;
+}
+#ekakoCartDrawer .ekako-cart-product-thumb img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #f8f6f1;
+}
+#ekakoCartDrawer .ekako-cart-product-fallback {
+  color: #928b83;
+  font-size: 22px;
+  font-weight: 850;
+  line-height: 1;
+}
+#ekakoCartDrawer .cart-item .ci-title {
+  color: #111318;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+#ekakoCartDrawer .cart-item .ci-sub {
+  color: #777d78;
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 420px) {
+  #ekakoCartDrawer .cart-item { gap: 8px; padding: 9px; }
+  #ekakoCartDrawer .cart-item > .left { gap: 9px; }
+  #ekakoCartDrawer .cart-item .thumb.ekako-cart-product-thumb {
+    flex-basis: 55px;
+    width: 55px !important;
+    height: 55px !important;
+  }
+  #ekakoCartDrawer .cart-item > div:last-child { font-size: 11px !important; }
+}

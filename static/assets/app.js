@@ -976,6 +976,8 @@ function applyRecommendedVariantType(){
       retail: p.retail_price || 0,
       reseller: p.reseller_price || 0,
       image_url: p.image_url || null,
+      style_group: p.style_group || "",  // EKAKO_COULEURS_V1
+      color_name: p.color_name || "",
       gallery_images: Array.isArray(p.gallery_images) ? p.gallery_images : [],
       moq: p.reseller_moq || 1,
       variant_type: p.variant_type || "shoe_size"
@@ -1549,6 +1551,8 @@ function openProductEditor(product){
     updateSkuHint();
   }
   byId("peTag").value = product?.tag || "";
+  byId("peStyleGroup").value = product?.style_group || ""; // EKAKO_COULEURS_V1
+  byId("peColorName").value = product?.color_name || "";
   byId("peVariantType").value = product?.variant_type || getRecommendedVariantTypeForCategory(product?.category || "");
   byId("peRetailPrice").value = Number(product?.retail_price || 0);
   byId("peResellerPrice").value = Number(product?.reseller_price || 0);
@@ -1744,6 +1748,8 @@ async function saveProductFromEditor(){
     fd.append("brand", (byId("peBrand")?.value || "").trim());
     fd.append("category", normalizeProductCategory(byId("peCategory")?.value || ""));
     fd.append("tag", (byId("peTag")?.value || "").trim());
+    fd.append("style_group", (byId("peStyleGroup")?.value || "").trim()); // EKAKO_COULEURS_V1
+    fd.append("color_name", (byId("peColorName")?.value || "").trim());
     fd.append("variant_type", byId("peVariantType")?.value || "shoe_size");
     fd.append("retail_price", byId("peRetailPrice")?.value || "0");
     fd.append("reseller_price", byId("peResellerPrice")?.value || "0");
@@ -2175,6 +2181,8 @@ function productSearchText(p){
   return normalizeSearchText([
     p.name,
     p.id,
+    p.style_group,
+    p.color_name,
     p.brand,
     p.cat,
     p.tag,
@@ -2262,7 +2270,19 @@ function productSearchText(p){
 
   grid.innerHTML = "";
 
-  const list = filteredProducts();
+  // EKAKO_REGROUPEMENT_COULEURS_V1 — une carte par style_group ; SKU conservés.
+  const visible = filteredProducts();
+  const grouped = new Map();
+  visible.forEach(product => {
+    const groupCode = String(product.style_group || "").trim().toUpperCase();
+    const key = groupCode ? `GROUP:${groupCode}` : `SKU:${product.id}`;
+    if(!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(product);
+  });
+  const list = [...grouped.values()].map(group => ({
+    group,
+    product: group.find(item => totalStockOfSku(item.id) > 0) || group[0]
+  }));
 
   if(byId("resultCount")){
     byId("resultCount").textContent = `${list.length} produit(s)`;
@@ -2277,8 +2297,10 @@ function productSearchText(p){
     return;
   }
 
-  list.forEach(p => {
-    const totalSt = totalStockOfSku(p.id);
+  list.forEach(({product: p, group}) => {
+    // Le stock affiché représente l'ensemble des couleurs visibles du modèle.
+    const totalSt = group.reduce((total, item) => total + totalStockOfSku(item.id), 0);
+    const severalColors = group.length > 1 && !!p.style_group;
     const stockInfo = getCatalogStockInfo(totalSt);
     const canAdd = totalSt > 0;
 
@@ -2315,14 +2337,13 @@ function productSearchText(p){
         </div>
 
         <div class="catalogMetaText">
-          ${escapeHtml(p.cat || "Autres")} • SKU ${escapeHtml(p.id || "")}
+          ${escapeHtml(p.cat || "Autres")} • ${severalColors ? `${group.length} coloris` : `SKU ${escapeHtml(p.id || "")}`}
         </div>
 
         <div class="catalogStockLine ${stockInfo.cls}">
           <span class="stockDot"></span>
           <span>${escapeHtml(stockInfo.label)}</span>
-          <span class="catalogSeparator">•</span>
-          <span>MOQ ${Number(p.moq || 1)}</span>
+          ${mode === "reseller" ? `<span class="catalogSeparator">•</span><span>MOQ ${Number(p.moq || 1)}</span>` : ""}
         </div>
 
         <div class="catalogActions">
@@ -2334,10 +2355,11 @@ function productSearchText(p){
             class="btn small"
             type="button"
             data-quick="${escapeHtml(p.id)}"
+            data-select-color="${severalColors ? "true" : "false"}"
             ${canAdd ? "" : "disabled"}
-            title="${canAdd ? "Ajouter au panier" : "Produit en rupture"}"
+            title="${canAdd ? (severalColors ? "Choisir la couleur et la taille" : "Ajouter au panier") : "Produit en rupture"}"
           >
-            ${canAdd ? "➕ Ajouter" : "Rupture"}
+            ${canAdd ? (severalColors ? "Choisir couleur" : "➕ Ajouter") : "Rupture"}
           </button>
         </div>
       </div>
@@ -2354,7 +2376,12 @@ function productSearchText(p){
 
   grid.querySelectorAll("[data-quick]").forEach(btn => {
     btn.addEventListener("click", () => {
-      quickAdd(btn.getAttribute("data-quick"));
+      if(btn.dataset.selectColor === "true"){
+        // La couleur ne doit pas être choisie automatiquement pour le client.
+        showProductDetail(btn.getAttribute("data-quick"));
+      }else{
+        quickAdd(btn.getAttribute("data-quick"));
+      }
     });
   });
 }
@@ -2847,6 +2874,25 @@ function renderResellerSummary(list){
     const price = Number(priceOf(p)) || 0;
     const stockText = initialStock <= 0 ? "Rupture de stock" : initialStock < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${initialStock} unité(s) disponible(s)`;
 
+    // EKAKO_COULEURS_V1 — regroupement par référence, pas par photo de galerie.
+    const colorVariants = p.style_group && p.color_name
+      ? products.filter(other => other.style_group === p.style_group && other.color_name)
+          .sort((a,b) => a.color_name.localeCompare(b.color_name, "fr"))
+      : [];
+    const colorSelector = colorVariants.length ? `
+      <div class="ekako-pdp-color-group">
+        <div class="ekako-pdp-field-title">Couleur : ${escapeHtml(p.color_name)}</div>
+        <div class="ekako-pdp-color-options" role="group" aria-label="Choisir une couleur">
+          ${colorVariants.map(c => `
+            <button type="button" data-ekako-color-sku="${escapeHtml(c.id)}"
+              class="ekako-pdp-color-option ${c.id === p.id ? "is-active" : ""}"
+              aria-pressed="${c.id === p.id}">
+              ${c.image_url ? `<img src="${escapeHtml(c.image_url)}" alt="" loading="lazy">` : ""}
+              <span>${escapeHtml(c.color_name)}</span>
+            </button>`).join("")}
+        </div>
+      </div>` : "";
+
     mount.className = "";
     mount.innerHTML = `
       <div class="ekako-pdp-layout">
@@ -2868,6 +2914,7 @@ function renderResellerSummary(list){
             <span class="ekako-pdp-price-type">${mode === "reseller" ? "Prix revendeur" : "Prix public"}</span>
           </div>
 
+          ${colorSelector}
           <div class="ekako-pdp-select-group">
             <div class="ekako-pdp-field-title">Choisir ${escapeHtml(variantLabel.toLowerCase())}</div>
             <div class="ekako-pdp-variants" role="group" aria-label="${escapeHtml(variantLabel)}">
@@ -2945,6 +2992,26 @@ function renderResellerSummary(list){
       line.classList.toggle("is-empty", max < minQty);
       line.lastElementChild.textContent = max <= 0 ? "Rupture de stock" : max < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${max} unité(s) disponible(s)`;
     }
+
+    // EKAKO_COULEURS_V1 — choisir un autre SKU actualise photo, prix, tailles et stock.
+    mount.querySelectorAll("[data-ekako-color-sku]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const nextSku = btn.dataset.ekakoColorSku;
+        if(!nextSku || nextSku === p.id || !getProduct(nextSku)) return;
+        const previousSize = byId("pdSize")?.value;
+        selectedProductId = nextSku;
+        renderProductDetail();
+        const nextProduct = getProduct(nextSku);
+        const nextMinQty = mode === "reseller" ? Math.max(1, Number(nextProduct.moq) || 1) : 1;
+        const index = (nextProduct.sizes || []).findIndex(s =>
+          String(s) === String(previousSize) && stockOf(nextSku,s) >= nextMinQty);
+        if(index >= 0){
+          byId("productDetailMount")?.querySelector(`[data-pdp-variant="${index}"]`)?.click();
+        }
+        const scroll = byId("productDetailMount");
+        if(scroll) scroll.scrollTop = 0;
+      });
+    });
 
     mount.querySelectorAll("[data-pdp-variant]").forEach(btn=>{
       btn.addEventListener("click",()=>{
@@ -3114,7 +3181,10 @@ async function loadResellerStats(){
     div.className = "cart-item";
     div.innerHTML = `
       <div class="left">
-        <div class="thumb"></div>
+        <div class="thumb ekako-cart-product-thumb" aria-hidden="true">
+          <span class="ekako-cart-product-fallback">${escapeHtml(String(p?.name || i.name || i.sku || "?").trim().charAt(0).toUpperCase())}</span>
+          ${p?.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="" loading="lazy" decoding="async">` : ""}
+        </div>
         <div>
           <p class="ci-title">${p ? p.name : (i.name || i.sku)}</p>
           <p class="ci-sub">
@@ -3141,6 +3211,9 @@ async function loadResellerStats(){
       </div>
     `;
 
+    div.querySelector(".ekako-cart-product-thumb img")?.addEventListener("error", (event) => {
+      event.currentTarget.remove();
+    });
     const btns = div.querySelectorAll("button");
     btns[0].addEventListener("click", ()=>updateQty(idx,-1));
     btns[1].addEventListener("click", ()=>updateQty(idx,+1));
