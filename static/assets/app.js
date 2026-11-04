@@ -2737,87 +2737,186 @@ function renderResellerSummary(list){
   `;
 }
 
-  function showProductDetail(sku){ selectedProductId = sku; renderProductDetail(); }
+  let ekakoProductLastFocus = null;
+
+  function closeEkakoProductModal(){
+    const modal = byId("ekakoProductModal");
+    if(!modal || modal.hidden) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("ekako-product-open");
+    if(ekakoProductLastFocus?.isConnected){
+      ekakoProductLastFocus.focus({preventScroll: true});
+    }
+    ekakoProductLastFocus = null;
+  }
+
+  function showProductDetail(sku){
+    selectedProductId = sku;
+    renderProductDetail();
+    const modal = byId("ekakoProductModal");
+    if(!modal) return;
+    ekakoProductLastFocus = document.activeElement;
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("ekako-product-open");
+    byId("ekakoProductCloseBtn")?.focus({preventScroll: true});
+  }
+
+  byId("ekakoProductCloseBtn")?.addEventListener("click", closeEkakoProductModal);
+  byId("ekakoProductBackdrop")?.addEventListener("click", closeEkakoProductModal);
+  document.addEventListener("keydown", (event)=>{
+    const modal = byId("ekakoProductModal");
+    if(!modal || modal.hidden) return;
+    if(event.key === "Escape"){
+      event.preventDefault();
+      closeEkakoProductModal();
+      return;
+    }
+    if(event.key !== "Tab") return;
+    const items = [...modal.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]')]
+      .filter(x=>x.getClientRects().length && x.tabIndex !== -1);
+    if(!items.length) return;
+    const first = items[0], last = items[items.length-1];
+    if(event.shiftKey && document.activeElement === first){event.preventDefault();last.focus();}
+    else if(!event.shiftKey && document.activeElement === last){event.preventDefault();first.focus();}
+  });
 
   function renderProductDetail(){
     const mount = byId("productDetailMount");
+    if(!mount) return;
     if(!selectedProductId){
-      mount.className = "muted";
-      mount.textContent = "Aucune fiche selectionnee.";
+      mount.textContent = "Sélectionne un produit du catalogue.";
       return;
     }
     const p = getProduct(selectedProductId);
     if(!p){
-      mount.className = "muted";
-      mount.innerHTML = `Produit introuvable pour SKU: <b>${selectedProductId}</b>`;
+      mount.textContent = "Produit introuvable.";
       return;
     }
 
+    const variants = Array.isArray(p.sizes) ? p.sizes : [];
     const variantLabel = getVariantLabel(p);
-
-    const sizesHtml = p.sizes.map(s=>{
-      const st = stockOf(p.id, s);
-      const cls = st<=0 ? "bad" : (st<=2 ? "warn" : "ok");
-      return `<span class="statusPill ${cls}">${formatVariantStockLabel(p, s)}: ${st}</span>`;
-    }).join(" ");
+    const minQty = mode === "reseller" ? Math.max(1, Number(p.moq) || 1) : 1;
+    const firstIndex = Math.max(0, variants.findIndex(s=>stockOf(p.id,s) >= minQty));
+    const selected = variants[firstIndex] || "";
+    const initialStock = selected ? stockOf(p.id,selected) : 0;
+    const label = v => escapeHtml(formatVariantValue(p,v));
+    const visual = p.image_url
+      ? `<img class="ekako-pdp-img" src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name || "Produit eKAKO")}">`
+      : `<div class="ekako-pdp-placeholder" aria-label="Image non disponible">${escapeHtml(String(p.name || "e").charAt(0).toUpperCase())}</div>`;
+    const title = escapeHtml(p.name || "Produit eKAKO");
+    const price = Number(priceOf(p)) || 0;
+    const stockText = initialStock <= 0 ? "Rupture de stock" : initialStock < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${initialStock} unité(s) disponible(s)`;
 
     mount.className = "";
     mount.innerHTML = `
-      <div class="productPage">
-        <div class="bigImg">
-          ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:16px">` : ""}
-          <div class="tag">${p.brand}</div><div class="tag">${p.id}</div>
+      <div class="ekako-pdp-layout">
+        <div class="ekako-pdp-visual">
+          <div class="ekako-pdp-visual-top">
+            <span class="ekako-pdp-category">${escapeHtml(p.cat || "Collection eKAKO")}</span>
+            ${p.tag ? `<span class="ekako-pdp-category">${escapeHtml(p.tag)}</span>` : ""}
+          </div>
+          <div class="ekako-pdp-img-wrap">${visual}</div>
+          <div class="ekako-pdp-visual-footer"><span>eKAKO • Sélection produits</span><span>Réf. ${escapeHtml(p.id)}</span></div>
         </div>
-
-        <div class="box">
-          <div class="section-title" style="margin:0 0 8px 0">
-            <h3 style="margin:0;font-size:14px">${p.name}</h3>
-            <span class="mini">${p.cat} • ${p.tag}</span>
-          </div>
-          <div class="badges">
-            <span class="badge">${mode==="reseller" ? "Tarif revendeur" : "Tarif detail"}</span>
-            <span class="badge">MOQ: ${p.moq}</span>
-            <span class="badge">Stock par ${variantLabel.toLowerCase()}</span>
-          </div>
-          ${renderProductDescription(p.desc)}
-
-          <div class="section-title" style="margin-top:12px">
-            <h3 style="margin:0;font-size:13px">${variantLabel}s / variantes</h3>
-            <span class="mini">stock live</span>
-          </div>
-          <div class="mini" style="line-height:2">${sizesHtml}</div>
-
-          <div style="margin-top:12px">
-            <div class="row"><span>Prix</span><strong>${money(priceOf(p))}</strong></div>
+        <div class="ekako-pdp-content">
+          <div class="ekako-pdp-brand">${escapeHtml(p.brand || "eKAKO")}</div>
+          <h2 class="ekako-pdp-title" id="ekakoProductDialogTitle">${title}</h2>
+          <div class="ekako-pdp-sku">Référence : ${escapeHtml(p.id)}</div>
+          <div class="ekako-pdp-price-area">
+            <strong class="ekako-pdp-price">${money(price)}</strong>
+            <span class="ekako-pdp-price-type">${mode === "reseller" ? "Prix revendeur" : "Prix public"}</span>
           </div>
 
-          <div class="checkout-grid" style="margin-top:10px">
-            <div>
-              <label>${variantLabel}</label>
-              <select id="pdSize">${p.sizes.map(s=>`<option value="${s}">${formatVariantValue(p, s)}</option>`).join("")}</select>
+          <div class="ekako-pdp-select-group">
+            <div class="ekako-pdp-field-title">Choisir ${escapeHtml(variantLabel.toLowerCase())}</div>
+            <div class="ekako-pdp-variants" role="group" aria-label="${escapeHtml(variantLabel)}">
+              ${variants.map((s,i)=>{
+                const available = stockOf(p.id,s);
+                const active = i === firstIndex;
+                return `<button type="button" data-pdp-variant="${i}" class="ekako-pdp-variant ${active ? "is-active" : ""}" aria-pressed="${active ? "true" : "false"}" ${available < minQty ? "disabled" : ""} title="${available} en stock">${label(s)}</button>`;
+              }).join("") || `<span class="ekako-pdp-field-hint">Aucune variante disponible</span>`}
             </div>
-            <div>
-              <label>Quantite</label>
-              <input class="text" id="pdQty" type="number" min="1" value="${mode==="reseller" ? p.moq : 1}" />
-              <div class="hintline">${mode==="reseller" ? `MOQ revendeur : ${p.moq}` : "Pas de MOQ en detail."}</div>
+            <select id="pdSize" class="ekako-pdp-native-select" tabindex="-1" aria-hidden="true">
+              ${variants.map((s,i)=>`<option value="${escapeHtml(s)}" ${i===firstIndex ? "selected" : ""}>${label(s)}</option>`).join("")}
+            </select>
+            <div class="ekako-pdp-stock ${initialStock < minQty ? "is-empty" : ""}" id="pdSelectedStock" aria-live="polite">
+              <span class="ekako-pdp-dot"></span><span>${stockText}</span>
             </div>
+            ${mode === "reseller" ? `<div class="ekako-pdp-field-hint">Commande minimum revendeur : ${minQty} unité(s)</div>` : ""}
           </div>
 
-          <div class="hero-row" style="margin-top:12px">
-            <button class="btn primary" id="pdAddBtn">🛒 Ajouter au panier</button>
+          <div class="ekako-pdp-quantity-row">
+            <span class="ekako-pdp-field-title" style="margin:0">Quantité</span>
+            <div class="ekako-pdp-stepper">
+              <button type="button" id="pdQtyMinus" aria-label="Diminuer la quantité">−</button>
+              <input id="pdQty" type="number" inputmode="numeric" min="${minQty}" max="${Math.max(0,initialStock)}" value="${minQty}" aria-label="Quantité">
+              <button type="button" id="pdQtyPlus" aria-label="Augmenter la quantité">+</button>
+            </div>
           </div>
+          <div class="ekako-pdp-subtotal"><span>Sous-total des articles</span><strong id="pdSubtotal">${money(price * minQty)}</strong></div>
+          <button type="button" id="pdAddBtn" ${initialStock < minQty ? "disabled" : ""}>🛒 &nbsp; Ajouter au panier</button>
+          <div class="ekako-pdp-shipping"><span aria-hidden="true">↗</span><span>Les frais de livraison sont calculés selon la ville et le quartier lors de la commande.</span></div>
+          <div class="ekako-pdp-desc"><h3>À propos de ce produit</h3>${renderProductDescription(p.desc)}</div>
         </div>
-      </div>
-    `;
+      </div>`;
 
-    byId("pdAddBtn")?.addEventListener("click", ()=>{
-      const size = normalizeVariantValue(byId("pdSize").value);
-      const qty = parseInt(byId("pdQty").value, 10) || 1;
-      if(mode==="reseller" && qty < p.moq){ alert(`MOQ revendeur = ${p.moq}`); return; }
-      const v = validateStock(p.id, size, qty);
-      if(!v.ok){ alert(v.msg); return; }
-      addToCart(p.id, size, qty, "PRODUCT");
+    function updatePurchase(){
+      const size = normalizeVariantValue(byId("pdSize")?.value);
+      const qtyInput = byId("pdQty");
+      const max = size ? stockOf(p.id,size) : 0;
+      let qty = Number.parseInt(qtyInput?.value,10);
+      if(!Number.isFinite(qty) || qty < minQty) qty = minQty;
+      if(qty > max && max >= minQty) qty = max;
+      qtyInput.value = String(qty);
+      qtyInput.max = String(max);
+      byId("pdSubtotal").textContent = money(price * qty);
+      const allowed = max >= minQty && qty <= max;
+      const add = byId("pdAddBtn");
+      add.disabled = !allowed;
+      add.textContent = allowed ? "🛒  Ajouter au panier" : "Indisponible pour cette quantité";
+      byId("pdQtyMinus").disabled = qty <= minQty || !allowed;
+      byId("pdQtyPlus").disabled = qty >= max || !allowed;
+      const line = byId("pdSelectedStock");
+      line.classList.toggle("is-empty", max < minQty);
+      line.lastElementChild.textContent = max <= 0 ? "Rupture de stock" : max < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${max} unité(s) disponible(s)`;
+    }
+
+    mount.querySelectorAll("[data-pdp-variant]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const idx = Number(btn.dataset.pdpVariant);
+        if(!Number.isInteger(idx) || idx < 0 || idx >= variants.length) return;
+        byId("pdSize").value = String(variants[idx]);
+        byId("pdQty").value = String(minQty);
+        mount.querySelectorAll("[data-pdp-variant]").forEach(item=>{
+          const chosen = item === btn;
+          item.classList.toggle("is-active",chosen);
+          item.setAttribute("aria-pressed",String(chosen));
+        });
+        updatePurchase();
+      });
     });
+    byId("pdQtyMinus")?.addEventListener("click",()=>{
+      byId("pdQty").value = String((Number.parseInt(byId("pdQty").value,10) || minQty) - 1);
+      updatePurchase();
+    });
+    byId("pdQtyPlus")?.addEventListener("click",()=>{
+      byId("pdQty").value = String((Number.parseInt(byId("pdQty").value,10) || minQty) + 1);
+      updatePurchase();
+    });
+    byId("pdQty")?.addEventListener("input",updatePurchase);
+    byId("pdQty")?.addEventListener("change",updatePurchase);
+    byId("pdAddBtn")?.addEventListener("click",()=>{
+      const size = normalizeVariantValue(byId("pdSize")?.value);
+      const qty = Number.parseInt(byId("pdQty")?.value,10);
+      if(!Number.isInteger(qty) || qty < minQty){alert(`Quantité minimale : ${minQty}`);return;}
+      const result = validateStock(p.id,size,qty);
+      if(!result.ok){alert(result.msg);return;}
+      closeEkakoProductModal();
+      addToCart(p.id,size,qty,"PRODUCT");
+    });
+    updatePurchase();
   }
 
   function quickAdd(sku){

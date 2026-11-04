@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{% static 'assets/app.css' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-theme.css' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-mobile-menu.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/ekako-product-premium.css' %}">
 
 
 </head>
@@ -81,11 +82,7 @@
 
         <div class="products" id="productGrid"></div>
 
-        <div class="section-title" style="margin-top:18px">
-          <h3>Fiche produit</h3>
-          <span class="mini">Variantes + stock par taille</span>
-        </div>
-        <div id="productDetailMount" class="muted">Aucune fiche selectionnee.</div>
+        <!-- La fiche produit s'ouvre maintenant dans une fenetre dediee. -->
       </section>
 
 
@@ -1013,6 +1010,17 @@
       <button class="btn primary" id="saveProductBtn" type="button">💾 Enregistrer</button>
     </div>
   </div>
+</div>
+
+<div id="ekakoProductModal" hidden aria-hidden="true">
+  <button type="button" id="ekakoProductBackdrop" class="ekako-pdp-backdrop" aria-label="Fermer la fiche produit" tabindex="-1"></button>
+  <section class="ekako-pdp-shell" role="dialog" aria-modal="true" aria-labelledby="ekakoProductDialogTitle" tabindex="-1">
+    <div class="ekako-pdp-toolbar">
+      <span class="ekako-pdp-eyebrow">eKAKO · Fiche produit</span>
+      <button id="ekakoProductCloseBtn" type="button" class="ekako-pdp-close" aria-label="Fermer la fiche produit">✕</button>
+    </div>
+    <div id="productDetailMount">Sélectionne un produit pour afficher sa fiche.</div>
+  </section>
 </div>
 
 <script src="{% static 'assets/app.js' %}" defer></script>

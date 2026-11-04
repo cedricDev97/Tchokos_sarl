@@ -1,0 +1,295 @@
+/* eKAKO • Fiche produit premium V1 — sans migration */
+#ekakoProductModal[hidden] { display: none !important; }
+body.ekako-product-open { overflow: hidden !important; }
+#ekakoProductModal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+#ekakoProductModal .ekako-pdp-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(17, 19, 24, .68);
+  backdrop-filter: blur(7px);
+  cursor: default;
+  z-index: 0;
+}
+#ekakoProductModal .ekako-pdp-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1040px, 100%);
+  max-height: min(850px, calc(100vh - 48px));
+  max-height: min(850px, calc(100dvh - 48px));
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #f0e9e2;
+  border-radius: 24px;
+  box-shadow: 0 28px 110px rgba(0,0,0,.27);
+  overflow: hidden;
+}
+#ekakoProductModal .ekako-pdp-toolbar {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 24px;
+  border-bottom: 1px solid #eeeae4;
+  flex-shrink: 0;
+}
+#ekakoProductModal .ekako-pdp-eyebrow {
+  color: #7b817c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+#ekakoProductModal .ekako-pdp-close {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  align-items: center;
+  justify-content: center;
+  background: #f8f6f1;
+  border: 1px solid #e9e5df;
+  border-radius: 13px;
+  cursor: pointer;
+  font-size: 19px;
+  color: #111318;
+}
+#ekakoProductModal .ekako-pdp-close:hover { background: #fff0e9; }
+#ekakoProductModal .ekako-pdp-close:focus-visible,
+#ekakoProductModal button:focus-visible,
+#ekakoProductModal input:focus-visible {
+  outline: 3px solid rgba(241,90,36,.55);
+  outline-offset: 2px;
+}
+#ekakoProductModal #productDetailMount {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: #fff;
+}
+#ekakoProductModal .ekako-pdp-layout {
+  display: grid;
+  grid-template-columns: minmax(0, .98fr) minmax(0, 1.02fr);
+  align-items: start;
+}
+#ekakoProductModal .ekako-pdp-visual {
+  background: #f8f6f1;
+  padding: 28px;
+  height: 100%;
+  min-height: 570px;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+#ekakoProductModal .ekako-pdp-visual-top {
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+}
+#ekakoProductModal .ekako-pdp-category {
+  display: inline-flex;
+  background: #fff;
+  border: 1px solid #ede7df;
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #333b34;
+  font-size: 11px;
+  font-weight: 750;
+}
+#ekakoProductModal .ekako-pdp-img-wrap {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 350px;
+  margin: 14px 0;
+  position: relative;
+  overflow: hidden;
+}
+#ekakoProductModal .ekako-pdp-img {
+  max-width: 100%;
+  width: 100%;
+  height: 400px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 20px 19px rgba(17,19,24,.10));
+  transition: transform .25s ease;
+}
+#ekakoProductModal .ekako-pdp-img:hover { transform: scale(1.035); }
+#ekakoProductModal .ekako-pdp-placeholder {
+  font-size: clamp(70px,13vw,150px);
+  font-weight: 850;
+  color: #ded7cc;
+  letter-spacing: -.09em;
+}
+#ekakoProductModal .ekako-pdp-visual-footer {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  color: #777c77;
+  font-size: 11px;
+}
+#ekakoProductModal .ekako-pdp-content {
+  min-width: 0;
+  padding: clamp(22px,3vw,40px);
+}
+#ekakoProductModal .ekako-pdp-brand {
+  color: #0b8f6a;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: .14em;
+  margin-bottom: 10px;
+}
+#ekakoProductModal .ekako-pdp-title {
+  color: #111318;
+  margin: 0;
+  font-size: clamp(25px,2.5vw,38px);
+  line-height: 1.14;
+  letter-spacing: -.035em;
+  font-weight: 840;
+  overflow-wrap: anywhere;
+}
+#ekakoProductModal .ekako-pdp-sku {
+  color: #89908b;
+  font-size: 11px;
+  margin-top: 8px;
+}
+#ekakoProductModal .ekako-pdp-price-area {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 22px 0 20px;
+  border-bottom: 1px solid #ede9e3;
+}
+#ekakoProductModal .ekako-pdp-price {
+  font-size: clamp(26px,3.1vw,36px);
+  color: #111318;
+  font-weight: 900;
+  letter-spacing: -.035em;
+}
+#ekakoProductModal .ekako-pdp-price-type {
+  background: #fff0e9;
+  color: #b3431b;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+#ekakoProductModal .ekako-pdp-field-title {
+  color: #111318;
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+#ekakoProductModal .ekako-pdp-select-group { margin-top: 22px; }
+#ekakoProductModal .ekako-pdp-variants { display:flex; gap:8px; flex-wrap:wrap; }
+#ekakoProductModal .ekako-pdp-variant {
+  min-width: 47px;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1px solid #dbdcd5;
+  border-radius: 11px;
+  background: #fff;
+  color: #262b29;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+#ekakoProductModal .ekako-pdp-variant:hover:not(:disabled) { border-color: #f15a24; }
+#ekakoProductModal .ekako-pdp-variant.is-active { background: #111318; color:#fff; border-color: #111318; }
+#ekakoProductModal .ekako-pdp-variant:disabled { opacity:.38; text-decoration:line-through; cursor:not-allowed; }
+#ekakoProductModal .ekako-pdp-stock {
+  display:flex; align-items:center; gap:7px; margin-top:10px;
+  color:#0b8f6a; font-size:12px; font-weight:700;
+}
+#ekakoProductModal .ekako-pdp-stock.is-empty { color: #b64338; }
+#ekakoProductModal .ekako-pdp-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+#ekakoProductModal .ekako-pdp-quantity-row {
+  display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:23px 0 14px;
+}
+#ekakoProductModal .ekako-pdp-stepper {
+  display:flex; align-items:center; border:1px solid #e9e5df; border-radius:13px; overflow:hidden; background:#fff;
+}
+#ekakoProductModal .ekako-pdp-stepper button {
+  width:44px; height:44px; border:0; color:#111318; background:#fff; font-size:20px; cursor:pointer;
+}
+#ekakoProductModal .ekako-pdp-stepper button:disabled { opacity:.28; cursor:not-allowed; }
+#ekakoProductModal #pdQty {
+  width:58px !important; height:44px; min-width:0; max-width:58px; padding:0 !important;
+  border:0 !important; border-left:1px solid #eee9e3 !important; border-right:1px solid #eee9e3 !important;
+  border-radius:0 !important; background:#fff !important; color:#111318 !important;
+  font-weight:800; font-size:15px !important; text-align:center; outline:0;
+  -moz-appearance:textfield; appearance:textfield;
+}
+#ekakoProductModal #pdQty::-webkit-inner-spin-button,
+#ekakoProductModal #pdQty::-webkit-outer-spin-button { -webkit-appearance: none; margin:0; }
+#ekakoProductModal .ekako-pdp-subtotal {
+  display:flex; justify-content:space-between; gap:12px; padding:15px 0; font-size:12px;
+  color:#656b66; border-top:1px dashed #e6e1d9;
+}
+#ekakoProductModal .ekako-pdp-subtotal strong { color:#111318; font-size:16px; }
+#ekakoProductModal #pdAddBtn {
+  width:100%; min-height:55px; border:0; border-radius:14px; background:#f15a24 !important; color:#fff !important;
+  font-size:14px; font-weight:850; cursor:pointer; box-shadow:0 9px 20px rgba(241,90,36,.18);
+}
+#ekakoProductModal #pdAddBtn:hover:not(:disabled) { background:#df4d19 !important; }
+#ekakoProductModal #pdAddBtn:disabled { opacity:.52; cursor:not-allowed; box-shadow:none; }
+#ekakoProductModal .ekako-pdp-shipping {
+  display:flex; align-items:flex-start; gap:9px; margin:14px 0 0; padding:12px 13px;
+  background:#f5f8f5; border:1px solid #e2eee5; border-radius:12px; color:#436250;
+  font-size:12px; line-height:1.5;
+}
+#ekakoProductModal .ekako-pdp-desc {
+  border-top:1px solid #ede9e3; margin-top:22px; padding-top:17px;
+  font-size:13px; line-height:1.65; color:#3e453f;
+}
+#ekakoProductModal .ekako-pdp-desc h3 { margin:0 0 10px; font-size:15px; color:#111318; }
+#ekakoProductModal .productDescriptionBlock { border:0 !important; padding:0 !important; background:transparent !important; box-shadow:none !important; }
+#ekakoProductModal .ekako-pdp-desc .muted { color:#8b918b; }
+#ekakoProductModal .ekako-pdp-field-hint { font-size:11px; color:#717973; margin-top:6px; }
+#ekakoProductModal .ekako-pdp-native-select { position:absolute !important; opacity:0 !important; pointer-events:none !important; width:1px !important; height:1px !important; }
+@media (max-width: 760px) {
+  #ekakoProductModal { padding: 0; }
+  #ekakoProductModal .ekako-pdp-shell {
+    width:100%; height:100vh; height:100dvh; max-height:none; border-radius:0; border:0;
+  }
+  #ekakoProductModal .ekako-pdp-toolbar {
+    padding:max(12px, env(safe-area-inset-top)) 18px 12px;
+  }
+  #ekakoProductModal .ekako-pdp-layout { grid-template-columns:minmax(0,1fr); }
+  #ekakoProductModal .ekako-pdp-visual {
+    min-height:0; height:auto; padding:16px 18px; border-radius:0;
+  }
+  #ekakoProductModal .ekako-pdp-img-wrap { min-height:0; margin:8px 0; }
+  #ekakoProductModal .ekako-pdp-img { height: min(47vw, 205px); }
+  #ekakoProductModal .ekako-pdp-placeholder { font-size:68px; }
+  #ekakoProductModal .ekako-pdp-content { padding:22px 19px max(28px, env(safe-area-inset-bottom)); }
+  #ekakoProductModal .ekako-pdp-title { font-size:27px; }
+  #ekakoProductModal .ekako-pdp-price-area { padding:17px 0; }
+  #ekakoProductModal .ekako-pdp-quantity-row { margin-top:17px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #ekakoProductModal .ekako-pdp-img { transition:none; }
+}
+
+/* eKAKO — Photo produit mobile V1.1 */
+@media (max-width: 760px) {
+  #ekakoProductModal .ekako-pdp-img {
+    height: min(72vw, 280px);
+    object-fit: contain;
+  }
+}
