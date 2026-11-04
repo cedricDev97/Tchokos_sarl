@@ -9,6 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="{% static 'assets/brand/ekako_favicon_appicon.svg' %}">
   <link rel="stylesheet" href="{% static 'assets/app.css' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-theme.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/ekako-mobile-menu.css' %}">
 
 
 </head>
@@ -26,8 +27,9 @@
       </a>
       <p class="ekako-brand-tagline">Le commerce d'ici, autrement.</p>
     </div>
+    <button type="button" id="ekakoMobileMenuBtn" class="ekako-mobile-menu-toggle" aria-controls="ekakoMobileActions" aria-expanded="false" aria-label="Ouvrir le menu">☰</button>
 
-    <div class="actions">
+    <div class="actions" id="ekakoMobileActions">
       <nav class="tabs ekako-store-nav" aria-label="Navigation principale">
         <a class="tab" href="{% url 'home' %}">Accueil</a>
         <button type="button" class="tab active" id="tabShop">Boutique</button>
@@ -1015,5 +1017,6 @@
 
 <script src="{% static 'assets/app.js' %}" defer></script>
 
+<script src="{% static 'assets/ekako-mobile-menu.js' %}" defer></script>
 </body>
 </html>

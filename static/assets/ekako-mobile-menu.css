@@ -1,0 +1,259 @@
+/* eKAKO — Menu Mobile V1. Chargé après les autres CSS. */
+.ekako-mobile-menu-toggle { display:none; }
+
+@media (max-width: 760px) {
+  .ekako-mobile-menu-toggle {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 44px;
+    width:44px;
+    height:44px;
+    padding:0;
+    border:1px solid #E9E5DF;
+    border-radius:12px;
+    background:#FFFFFF;
+    color:#111318;
+    font-size:23px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .ekako-mobile-menu-toggle:focus-visible {
+    outline:3px solid rgba(241,90,36,.35);
+    outline-offset:2px;
+  }
+
+  /* Accueil / : logo + bouton menu, liens dépliables */
+  .site-header .nav-wrap {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    min-height:68px;
+    gap:8px 12px;
+    padding-top:12px;
+    padding-bottom:12px;
+  }
+  .site-header .brand { min-width:0; }
+  .site-header .nav-links {
+    display:none;
+    order:initial;
+    grid-column:1 / -1;
+    width:100%;
+    padding:8px 0 2px;
+    margin:0;
+    overflow:visible;
+    white-space:normal;
+    flex-direction:column;
+    align-items:stretch;
+    gap:3px;
+    border-top:1px solid #E9E5DF;
+  }
+  .site-header.ekako-menu-open .nav-links { display:flex; }
+  .site-header .nav-links a {
+    display:flex;
+    align-items:center;
+    min-height:46px;
+    padding:10px 12px;
+    border-radius:10px;
+  }
+  .site-header .nav-links a:hover { background:#FFF0E9; }
+
+  /* Boutique /boutique/ : logo + panier + bouton menu */
+  body > header .topbar {
+    display:flex !important;
+    flex-wrap:wrap !important;
+    align-items:center !important;
+    gap:8px !important;
+    padding:12px 14px !important;
+  }
+  body > header .brand {
+    order:0;
+    flex:1 1 auto;
+    min-width:0;
+  }
+  body > header .brand .ekako-brand-logo { width:124px !important; }
+  body > header .topbar > #openCheckoutBtn {
+    order:1;
+    flex:0 0 auto;
+    min-height:44px;
+    padding:9px 10px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  body > header .topbar > .ekako-mobile-menu-toggle { order:2; }
+  body > header .actions {
+    display:none !important;
+    order:3;
+    flex:0 0 100% !important;
+    width:100% !important;
+    min-width:0;
+    padding:8px 0 0;
+    border-top:1px solid #E9E5DF;
+  }
+  body > header.ekako-menu-open .actions {
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:7px;
+  }
+  body > header .ekako-store-nav {
+    display:flex !important;
+    flex-direction:column;
+    align-items:stretch;
+    flex-wrap:nowrap;
+    width:100% !important;
+    overflow:visible;
+    gap:2px;
+    padding:0;
+  }
+  body > header .ekako-store-nav .tab {
+    width:100%;
+    min-height:44px;
+    justify-content:flex-start;
+    text-align:left;
+    padding:11px 12px;
+  }
+  body > header .actions > .btn:not(#openCheckoutBtn) {
+    align-self:stretch;
+    justify-content:center;
+    min-height:44px;
+  }
+  body > header .actions > .chip { display:none !important; }
+}
+
+@media (max-width: 370px) {
+  body > header .brand .ekako-brand-logo { width:108px !important; }
+  body > header .topbar > #openCheckoutBtn { font-size:11px; padding:8px; }
+}
+
+/* eKAKO — CORRECTION EN-TETE MOBILE V1.1 */
+@media (max-width: 760px) {
+
+  body > header .topbar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    min-height: 70px;
+  }
+
+  body > header .topbar > .brand {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    align-self: center !important;
+  }
+
+  body > header .brand .ekako-brand-logo {
+    width: 112px !important;
+    max-width: 100%;
+  }
+
+  body > header .topbar > #openCheckoutBtn {
+    order: 1;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    min-height: 44px;
+    padding: 8px 10px !important;
+  }
+
+  body > header .topbar > .ekako-mobile-menu-toggle {
+    order: 2;
+    flex: 0 0 44px !important;
+    margin: 0 !important;
+  }
+
+  body > header .topbar > .actions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: #FFFFFF;
+    padding: 12px 16px 18px !important;
+    border-bottom: 1px solid #E9E5DF;
+    box-shadow: 0 16px 26px rgba(17,19,24,.10);
+  }
+
+  body > header.ekako-menu-open .actions {
+    width: 100% !important;
+  }
+}
+
+
+/* eKAKO — FIX SCROLL ET NAVIGATION V1 */
+
+/* Navigation toujours visible */
+body > header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 500 !important;
+  width: 100%;
+  background: #FFFFFF !important;
+}
+
+/* Fenetre des conditions revendeurs */
+#resellerTermsModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  box-sizing: border-box;
+  padding: 12px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Carte adaptee a la hauteur de l'ecran */
+#resellerTermsModal > .modalCard {
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(820px, 100%) !important;
+  max-height: calc(100vh - 24px) !important;
+  max-height: calc(100dvh - 24px) !important;
+  min-height: 0;
+  margin: 0 auto !important;
+  overflow: hidden !important;
+}
+
+/* Titre et bouton fermer restent visibles */
+#resellerTermsModal .modalHead {
+  flex: 0 0 auto;
+}
+
+/* Zone des conditions defilable au doigt */
+#resellerTermsModal .modalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ajustements sur smartphone */
+@media (max-width: 760px) {
+  #resellerTermsModal {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      10px
+      max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  #resellerTermsModal > .modalCard {
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 16px;
+  }
+
+  #resellerTermsModal .modalHead {
+    padding: 14px 12px !important;
+    gap: 10px;
+  }
+
+  #resellerTermsModal .modalBody {
+    padding: 14px 12px 24px !important;
+  }
+}

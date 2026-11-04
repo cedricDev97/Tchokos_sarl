@@ -8,6 +8,7 @@
   <title>eKAKO — Le commerce d'ici, autrement.</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'assets/brand/ekako_favicon_appicon.svg' %}">
   <link rel="stylesheet" href="{% static 'assets/ekako-home.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/ekako-mobile-menu.css' %}">
 </head>
 <body>
   <header class="site-header">
@@ -15,7 +16,8 @@
       <a class="brand" href="{% url 'home' %}" aria-label="eKAKO, accueil">
         <img src="{% static 'assets/brand/ekako_master_color_no_tagline.svg' %}" alt="eKAKO" width="156" height="48">
       </a>
-      <div class="nav-links">
+      <button type="button" id="ekakoMobileMenuBtn" class="ekako-mobile-menu-toggle" aria-controls="ekakoMobileLinks" aria-expanded="false" aria-label="Ouvrir le menu">☰</button>
+      <div class="nav-links" id="ekakoMobileLinks">
         <a href="{% url 'boutique' %}">Boutique</a>
         <a href="#bonplans">BonPlans</a>
         <a href="{% url 'boutique' %}?section=reseller">eKAKO Pro</a>
@@ -93,5 +95,6 @@
   </main>
 
   <footer class="footer"><div class="wrap footer-inner"><strong>eKAKO</strong><span>Le commerce d'ici, autrement. · Yaoundé, Cameroun</span><a href="{% url 'boutique' %}?section=track">Suivre ma commande →</a></div></footer>
+<script src="{% static 'assets/ekako-mobile-menu.js' %}" defer></script>
 </body>
 </html>

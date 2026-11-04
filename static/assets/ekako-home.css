@@ -39,3 +39,38 @@ h1,h2,h3,p{margin-top:0}h1{font-size:clamp(44px,5vw,74px);line-height:1.055;lett
 @media(max-width:1050px){.nav-links{gap:13px;font-size:12px}.nav-cta{display:none}.intro{grid-template-columns:1fr 1fr;gap:20px}.intro-visual{padding:25px}.products-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.wrap,.nav-wrap{padding-left:17px;padding-right:17px}.nav-wrap{flex-wrap:wrap;padding-top:13px;padding-bottom:13px;gap:15px}.brand img{width:131px}.nav-links{order:2;width:100%;overflow-x:auto;white-space:nowrap;padding-bottom:5px;gap:20px}.intro{grid-template-columns:1fr;padding-top:14px;gap:2px}.intro-copy{padding:22px 0}h1{font-size:clamp(39px,10vw,55px)}.lead{font-size:15px}.intro-visual{min-height:370px}.category-grid{grid-template-columns:1fr;gap:10px}.category-card{min-height:100px;flex-direction:row;align-items:center;flex-wrap:wrap;gap:13px}.category-icon{margin-bottom:0}.category-card small{width:100%;margin-left:59px;margin-top:-8px}.products-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-info{padding:12px}.product-info h3{font-size:14px}.product-bottom strong{font-size:13px}.heading{align-items:start}.inline-link{font-size:12px}.promo,.pro{flex-direction:column;align-items:flex-start;margin-left:17px;margin-right:17px}.footer-inner{flex-wrap:wrap;padding-top:20px;padding-bottom:20px}}
 @media(max-width:430px){.products-grid{grid-template-columns:1fr}.intro-actions .button{width:100%}.visual-mark{font-size:40px}.intro-visual{padding:22px}.step{padding:13px}.heading{flex-direction:column;align-items:flex-start}.footer-inner{flex-direction:column;align-items:flex-start}}
+
+/* eKAKO MOBILE FIRST V1 — RESPONSIVE */
+@media (max-width: 760px) {
+  .site-header { position: relative; }
+  .nav-wrap { gap: 9px; }
+  .nav-links {
+    width: 100%;
+    min-height: 46px;
+    gap: 20px;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 44px; }
+  .intro { padding-top: 14px; padding-bottom: 30px; }
+  .intro-copy { padding: 16px 0 23px; }
+  h1 { font-size: clamp(39px, 9vw, 54px); line-height: 1.08; }
+  .intro-actions .button { min-height: 48px; }
+  .intro-visual { min-height: 0; border-radius: 22px; padding: 24px; }
+  .visual-title { margin-top: 22px; }
+  .step-list { margin-top: 18px; }
+  .heading h2, .pro h2 { line-height: 1.2; }
+  .product-photo img { object-fit: cover; }
+  .product-info h3 { min-height: 0; line-height: 1.35; }
+  .product-bottom { align-items: flex-start; }
+}
+@media (min-width: 430px) and (max-width: 760px) {
+  .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 429px) {
+  .products-grid { grid-template-columns: minmax(0, 1fr); }
+  .intro-actions .button { width: 100%; }
+  .intro-note { margin-top: 17px; }
+}

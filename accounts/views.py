@@ -35,9 +35,22 @@ def get_role(user) -> str:
     return "visitor"
 
 
-@login_required
 @require_http_methods(["GET"])
 def me_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            "ok": True,
+            "authenticated": False,
+            "role": "visitor",
+            "permissions": {
+                "super_admin": False,
+                "orders": False,
+                "payments": False,
+                "inventory": False,
+                "resellers": False,
+            },
+        })
+
     phone = ""
     if hasattr(request.user, "profile"):
         phone = request.user.profile.phone or ""
