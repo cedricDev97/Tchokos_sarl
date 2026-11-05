@@ -3438,7 +3438,21 @@ async function renderTrackingFromApi(orderNo){
   const box = byId("trackResult");
   box.innerHTML = `<div class="note">Recherche...</div>`;
 
-  const res = await fetch(`/api/track/${encodeURIComponent(orderNo)}/`);
+  // EKAKO_COMMANDES_SECURITE_V1 : le suivi exige le téléphone de la commande.
+  const phone = (byId("trackPhoneInput")?.value || "").trim();
+  if(!phone){
+    box.textContent = "Saisis le téléphone utilisé lors de la commande.";
+    return;
+  }
+  const res = await fetch(`/api/track/${encodeURIComponent(orderNo)}/`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken") || byId("csrfToken")?.value || ""
+    },
+    body: JSON.stringify({phone})
+  });
   const data = await res.json();
 
   if(!res.ok || !data.ok){
@@ -3460,13 +3474,13 @@ async function renderTrackingFromApi(orderNo){
           <div style="font-weight:800">${o.orderNo}</div>
           <div class="muted">${new Date(o.createdAt).toLocaleString()}</div>
         </div>
-        <div class="pill">${o.status}</div>
+        <div class="pill">${escapeHtml(o.status || "")}</div>
       </div>
 
       <div class="hr"></div>
 
-      <div class="muted">${o.customer.name} • ${o.customer.phone}</div>
-      <div class="muted">${o.customer.city} / ${o.customer.quarter} • ${o.customer.address}</div>
+      <div class="muted">${escapeHtml(o.customer.name || "")}</div>
+      <div class="muted">${escapeHtml(o.customer.city || "")} / ${escapeHtml(o.customer.quarter || "")}</div>
 
       <div class="hr"></div>
 
@@ -3474,8 +3488,8 @@ async function renderTrackingFromApi(orderNo){
         ${(o.items||[]).map(it=>`
           <div class="row" style="justify-content:space-between;">
             <div>
-              <div style="font-weight:700">${it.name}</div>
-              <div class="muted">${it.sku} • Option ${it.size} • x${it.qty}</div>
+              <div style="font-weight:700">${escapeHtml(it.name || "")}</div>
+              <div class="muted">${escapeHtml(it.sku || "")} • Option ${escapeHtml(it.size || "")} • x${it.qty}</div>
             </div>
             <div style="font-weight:800">${money(it.line_total)}</div>
           </div>
@@ -5147,6 +5161,9 @@ byId("goTrackSuccessBtn")?.addEventListener("click", ()=>{
   closeCheckoutSuccessModal();
   goTab("track");
   if(byId("trackInput")) byId("trackInput").value = no;
+  if(byId("trackPhoneInput") && byId("cPhone")){
+    byId("trackPhoneInput").value = (byId("cPhone").value || "").trim();
+  }
   if(no) renderTrackingFromApi(no);
 });
 

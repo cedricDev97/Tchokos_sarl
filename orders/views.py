@@ -197,11 +197,30 @@ def checkout_api(request):
 
     return JsonResponse({"ok": True, "orderNo": order.order_no, "mode": pricing_mode})
 
+# EKAKO_COMMANDES_SECURITE_V1 : second facteur de vérification du suivi client.
+@require_POST
 def track_api(request, order_no: str):
+    import hmac
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+
+    supplied = "".join(ch for ch in str(payload.get("phone") or "") if ch.isascii() and ch.isdigit())
+    if len(supplied) < 8:
+        return JsonResponse({"ok": False, "error": "Indique le téléphone associé à ta commande."}, status=400)
+
     try:
         o = Order.objects.prefetch_related("items").get(order_no=order_no)
     except Order.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+        return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
+
+    expected = "".join(ch for ch in str(o.customer_phone or "") if ch.isascii() and ch.isdigit())
+    if not hmac.compare_digest(supplied, expected):
+        return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
 
     return JsonResponse({
         "ok": True,
@@ -211,10 +230,8 @@ def track_api(request, order_no: str):
             "createdAt": o.created_at.isoformat(),
             "customer": {
                 "name": o.customer_name,
-                "phone": o.customer_phone,
                 "city": o.city,
                 "quarter": o.quarter,
-                "address": o.address,
             },
             "shipping": o.shipping_fee,
             "subtotal": o.subtotal,
@@ -306,7 +323,7 @@ def restock_order(order: Order):
         v.save(update_fields=["stock_qty"])
 
 
-@user_passes_test(can_view_orders)
+@user_passes_test(can_manage_orders)
 @require_POST
 def admin_update_status_api(request, order_no: str):
     try:
@@ -557,7 +574,8 @@ def admin_order_detail_api(request, order_no: str):
 
 ALLOWED_PAYMENT_STATUSES = {"unpaid", "pending", "paid", "failed"}
 
-@user_passes_test(can_view_orders)
+@user_passes_test(can_manage_payments)
+@require_POST
 def admin_update_payment_status_api(request, order_no: str):
     try:
         payload = json.loads(request.body.decode("utf-8"))
