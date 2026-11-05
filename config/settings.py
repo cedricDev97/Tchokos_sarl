@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -22,13 +23,47 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0_%t@wxf)(41&=vem)a+((y-8r40!4j8wdmx3yza7$8+jzt)qv'
+# EKAKO_SECURITY_V1 — environnements Django séparés
+# La clé de production doit venir de l'hébergeur. Ne jamais la committer.
+EKAKO_ENV = os.environ.get("EKAKO_ENV", "development").strip().lower()
+if EKAKO_ENV not in {"development", "production"}:
+    raise RuntimeError("EKAKO_ENV doit être development ou production")
+IS_PRODUCTION = EKAKO_ENV == "production"
+DEBUG = not IS_PRODUCTION
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+_secret = os.environ.get("DJANGO_SECRET_KEY", "").strip()
+if IS_PRODUCTION:
+    if len(_secret) < 50 or _secret.startswith("django-insecure-"):
+        raise RuntimeError("DJANGO_SECRET_KEY de production absente ou insuffisante")
+elif not _secret:
+    _key_path = BASE_DIR / ".ekako_local_secret_key"
+    if not _key_path.is_file():
+        raise RuntimeError("Clé locale manquante : relancer l'installateur Sécurité V1")
+    _secret = _key_path.read_text(encoding="utf-8").strip()
+SECRET_KEY = _secret
 
-ALLOWED_HOSTS = []
+if IS_PRODUCTION:
+    ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    if not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS:
+        raise RuntimeError("DJANGO_ALLOWED_HOSTS doit contenir uniquement les noms de domaine autorisés")
+    CSRF_TRUSTED_ORIGINS = [h.strip() for h in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if h.strip()]
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    # HSTS reste désactivé tant que HTTPS et le domaine réel ne sont pas validés.
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "0"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    # N'activer qu'après vérification de la politique d'en-têtes du proxy de confiance.
+    if os.environ.get("DJANGO_TRUST_X_FORWARDED_PROTO") == "1":
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+else:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost", "[::1]"]
+    CSRF_TRUSTED_ORIGINS = []
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
 
 
 # Application definition
