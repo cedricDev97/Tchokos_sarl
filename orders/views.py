@@ -62,139 +62,147 @@ import json
 
 @require_POST
 def checkout_api(request):
-    payload = json.loads(request.body.decode("utf-8") or "{}")
-    
+    """Créer une commande et décrémenter chaque variante UNE fois, atomiquement."""
+    from django.db import OperationalError
+    from django.db.models import F
 
-    customer = payload.get("customer") or {}
-    items = payload.get("items") or []
+    class CheckoutRejected(Exception):
+        pass
 
-    for k in ("name", "phone", "city", "quarter", "address"):
-        if not customer.get(k):
-            return JsonResponse({"ok": False, "error": f"Champ manquant: customer.{k}"}, status=400)
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Requête JSON invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
 
-    if not items:
-        return JsonResponse({"ok": False, "error": "Panier vide."}, status=400)
+    customer = payload.get("customer")
+    items = payload.get("items")
+    if not isinstance(customer, dict):
+        return JsonResponse({"ok": False, "error": "Client invalide."}, status=400)
+    if not isinstance(items, list) or not items or len(items) > 50:
+        return JsonResponse({"ok": False, "error": "Le panier doit contenir entre 1 et 50 lignes."}, status=400)
+
+    limits = {"name": 120, "phone": 30, "city": 80, "quarter": 120, "address": 255}
+    clean_customer = {}
+    for field, maximum in limits.items():
+        value = customer.get(field)
+        if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
+            return JsonResponse({"ok": False, "error": f"Champ client invalide : {field}."}, status=400)
+        clean_customer[field] = value.strip()
+
+    # Même SKU + même taille : toutes les lignes comptent comme une seule demande.
+    quantities = {}
+    total_quantity = 0
+    for it in items:
+        if not isinstance(it, dict):
+            return JsonResponse({"ok": False, "error": "Article invalide."}, status=400)
+        sku = it.get("sku")
+        size = it.get("size")
+        raw_qty = it.get("qty")
+        if not isinstance(sku, str) or not isinstance(size, str):
+            return JsonResponse({"ok": False, "error": "SKU ou option invalide."}, status=400)
+        sku, size = sku.strip().upper(), size.strip()
+        if not sku or not size or len(sku) > 40 or len(size) > 50:
+            return JsonResponse({"ok": False, "error": "SKU ou option invalide."}, status=400)
+        if isinstance(raw_qty, bool) or not isinstance(raw_qty, int) or raw_qty <= 0 or raw_qty > 500:
+            return JsonResponse({"ok": False, "error": "Quantité invalide (1 à 500)."}, status=400)
+        key = (sku, size)
+        quantities[key] = quantities.get(key, 0) + raw_qty
+        total_quantity += raw_qty
+        if quantities[key] > 500 or total_quantity > 2000:
+            return JsonResponse({"ok": False, "error": "Quantité demandée trop élevée."}, status=400)
+
+    pay_method = payload.get("pay_method", "MTN Mobile Money")
+    if not isinstance(pay_method, str) or not pay_method.strip() or len(pay_method.strip()) > 80:
+        return JsonResponse({"ok": False, "error": "Moyen de paiement invalide."}, status=400)
 
     pricing_mode = "reseller" if is_reseller(request.user) else "retail"
 
-    if pricing_mode == "reseller":
-        agg = {}
-        for it in items:
-            sku = (it.get("sku") or "").strip()
-            qty = int(it.get("qty") or 0)
-            if sku:
-                agg[sku] = agg.get(sku, 0) + qty
+    try:
+        with transaction.atomic():
+            order_lines = []
+            sku_totals = {}
+            subtotal = 0
 
-        from catalog.models import Product
-        for sku, total_qty in agg.items():
-            try:
-                p = Product.objects.get(sku=sku)
-            except Product.DoesNotExist:
-                return JsonResponse({"ok": False, "error": f"SKU inconnu: {sku}"}, status=400)
+            for (sku, size), qty in quantities.items():
+                try:
+                    variant = (Variant.objects.select_related("product", "size")
+                               .get(product__sku=sku, size__label=size))
+                except Variant.DoesNotExist:
+                    raise CheckoutRejected(f"Produit ou option introuvable : {sku}, {size}.")
 
-            moq = int(p.reseller_moq or 1)
-            if total_qty < moq:
-                return JsonResponse(
-                    {"ok": False, "error": f"MOQ non atteint pour {sku}. Minimum: {moq}, Actuel: {total_qty}"},
-                    status=400,
-                )
+                product = variant.product
+                if not product.is_active:
+                    raise CheckoutRejected(f"Produit indisponible : {sku}.")
+                if variant.stock_qty < qty:
+                    raise CheckoutRejected(f"Stock insuffisant : {sku}, {size} (disponible : {variant.stock_qty}).")
 
-    with transaction.atomic():
-        subtotal = 0
-        order_items = []
-
-        for it in items:
-            sku = (it.get("sku") or "").strip()
-
-            try:
-                size = str(it.get("size") or "").strip()
-                qty = int(it.get("qty") or 0)
-            except (TypeError, ValueError):
-                return JsonResponse({"ok": False, "error": "Item invalide (option/qty)."}, status=400)
-
-
-            if not sku or not size or qty <= 0:
-                return JsonResponse({"ok": False, "error": "Item invalide (option/qty)."}, status=400)
-
-            try:
-                variant = (
-                    Variant.objects
-                    .select_for_update()
-                    .select_related("product", "size")
-                    .get(product__sku=sku, size__label=size)
-                )
-            except Variant.DoesNotExist:
-                return JsonResponse(
-                    {"ok": False, "error": f"Variante introuvable: {sku} option {size}"},
-                    status=400
-                )
-
-            if variant.stock_qty < qty:
-                return JsonResponse(
-                    {"ok": False, "error": f"Stock insuffisant: {sku} option {size} dispo {variant.stock_qty}"},
-                    status=400
-                )
-
-            product = variant.product
+                sku_totals[sku] = sku_totals.get(sku, 0) + qty
+                unit_price = int(product.reseller_price if pricing_mode == "reseller" else product.retail_price)
+                line_total = unit_price * qty
+                subtotal += line_total
+                order_lines.append((variant, product, qty, unit_price, line_total))
 
             if pricing_mode == "reseller":
-                unit_price = int(product.reseller_price or 0)
-            else:
-                unit_price = int(product.retail_price or 0)
+                for variant, product, qty, unit_price, line_total in order_lines:
+                    minimum = int(product.reseller_moq or 1)
+                    if sku_totals[product.sku] < minimum:
+                        raise CheckoutRejected(
+                            f"MOQ non atteint pour {product.sku} : minimum {minimum}, demandé {sku_totals[product.sku]}."
+                        )
 
-            line_total = unit_price * qty
-            subtotal += line_total
-            order_items.append((variant, product, unit_price, qty, line_total))
+            # Mise à jour conditionnelle exécutée par la BD : pas de stock négatif,
+            # même si une autre commande survient entre la lecture et l'écriture.
+            for variant, product, qty, unit_price, line_total in order_lines:
+                changed = Variant.objects.filter(
+                    pk=variant.pk, stock_qty__gte=qty
+                ).update(stock_qty=F("stock_qty") - qty)
+                if changed != 1:
+                    raise CheckoutRejected(
+                        f"Stock modifié entre-temps pour {product.sku}, {variant.size.label}. Réessaie."
+                    )
 
-        shipping_fee = compute_shipping(
-            customer.get("city", "Autre"),
-            customer.get("quarter", "Autre")
-        )
-        total = subtotal + shipping_fee
+            shipping_fee = compute_shipping(clean_customer["city"], clean_customer["quarter"])
+            order = None
+            for _ in range(5):
+                try:
+                    # Savepoint : une collision de numéro ne casse pas la transaction.
+                    with transaction.atomic():
+                        order = Order.objects.create(
+                            order_no=gen_order_no(),
+                            customer_name=clean_customer["name"],
+                            customer_phone=clean_customer["phone"],
+                            city=clean_customer["city"],
+                            quarter=clean_customer["quarter"],
+                            address=clean_customer["address"],
+                            pay_method=pay_method.strip(),
+                            shipping_fee=shipping_fee,
+                            subtotal=subtotal,
+                            total=subtotal + shipping_fee,
+                            mode=pricing_mode,
+                            user=request.user if request.user.is_authenticated else None,
+                        )
+                    break
+                except IntegrityError:
+                    continue
+            if order is None:
+                raise CheckoutRejected("Numéro de commande indisponible. Réessaie.")
 
-        order = None
-        for _ in range(10):
-            order_no = gen_order_no()
-            try:
-                order = Order.objects.create(
-                    order_no=order_no,
-                    customer_name=customer["name"],
-                    customer_phone=customer["phone"],
-                    city=customer["city"],
-                    quarter=customer["quarter"],
-                    address=customer["address"],
-                    pay_method=payload.get("pay_method", "MTN Mobile Money"),
-                    shipping_fee=shipping_fee,
-                    subtotal=subtotal,
-                    total=total,
-                    mode=pricing_mode,
-                    user=request.user if request.user.is_authenticated else None,
+            OrderItem.objects.bulk_create([
+                OrderItem(
+                    order=order, variant=variant, sku=product.sku,
+                    product_name=product.name, size_value=variant.size.label,
+                    color_name=(product.color_name or "").strip(),
+                    unit_price=unit_price, qty=qty, line_total=line_total,
                 )
-                break
-            except IntegrityError:
-                order = None
-                continue
-
-        if order is None:
-            return JsonResponse(
-                {"ok": False, "error": "Impossible de générer un numéro de commande unique. Réessaie."},
-                status=500
-            )
-
-        for (variant, product, unit_price, qty, line_total) in order_items:
-            OrderItem.objects.create(
-                order=order,
-                variant=variant,
-                sku=product.sku,
-                product_name=product.name,
-                size_value=variant.size.label,
-                color_name=(product.color_name or "").strip(),
-                unit_price=unit_price,
-                qty=qty,
-                line_total=line_total
-            )
-            variant.stock_qty -= qty
-            variant.save(update_fields=["stock_qty"])
+                for variant, product, qty, unit_price, line_total in order_lines
+            ])
+    except CheckoutRejected as exc:
+        # L'atomicité annule aussi toute décrémentation déjà effectuée.
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    except OperationalError:
+        return JsonResponse({"ok": False, "error": "Stock momentanément occupé. Réessaie."}, status=503)
 
     return JsonResponse({"ok": True, "orderNo": order.order_no, "mode": pricing_mode})
 
@@ -328,55 +336,54 @@ def restock_order(order: Order):
 @user_passes_test(can_manage_orders)
 @require_POST
 def admin_update_status_api(request, order_no: str):
+    """Transition atomique ; le stock n'est restitué qu'une seule fois."""
+    from django.db import OperationalError
+    from django.db.models import F
+
     try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        payload = {}
-
-    new_status = (payload.get("status") or "").strip().lower()
-    note = (payload.get("note") or "").strip()
-
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "JSON invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+    new_status = str(payload.get("status") or "").strip().lower()
+    note = str(payload.get("note") or "").strip()[:255]
     if new_status not in ALLOWED_STATUSES:
         return JsonResponse({"ok": False, "error": "Statut invalide."}, status=400)
 
     try:
-        o = Order.objects.select_related().get(order_no=order_no)
-    except Order.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+        with transaction.atomic():
+            try:
+                order = Order.objects.select_for_update().get(order_no=order_no)
+            except Order.DoesNotExist:
+                return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
 
-    old_status = (o.status or "").strip().lower()
+            old_status = (order.status or "").strip().lower()
+            if old_status == new_status:
+                return JsonResponse({"ok": True, "orderNo": order.order_no, "status": order.status})
+            if new_status not in ALLOWED_TRANSITIONS.get(old_status, set()):
+                return JsonResponse({"ok": False,
+                                     "error": f"Transition interdite : {old_status} vers {new_status}."}, status=400)
 
-    if new_status == old_status:
-        return JsonResponse({"ok": True, "orderNo": o.order_no, "status": o.status})
+            changed = Order.objects.filter(pk=order.pk, status=old_status).update(status=new_status)
+            if changed != 1:
+                return JsonResponse({"ok": False, "error": "Statut modifié entre-temps. Actualise."}, status=409)
 
-    if new_status not in ALLOWED_TRANSITIONS.get(old_status, set()):
-        return JsonResponse(
-            {"ok": False, "error": f"Transition interdite: {old_status} → {new_status}"},
-            status=400,
-        )
+            if new_status in {"cancelled", "failed"} and old_status in {"received", "preparing"}:
+                for item in order.items.all():
+                    Variant.objects.filter(pk=item.variant_id).update(
+                        stock_qty=F("stock_qty") + item.qty
+                    )
 
-    should_restock = (new_status in {"cancelled", "failed"} and old_status in {"received", "preparing"})
+            OrderStatusLog.objects.create(
+                order=order, old_status=old_status, new_status=new_status,
+                changed_by=request.user if request.user.is_authenticated else None,
+                note=note,
+            )
+    except OperationalError:
+        return JsonResponse({"ok": False, "error": "Commande momentanément occupée. Réessaie."}, status=503)
 
-    with transaction.atomic():
-        if should_restock:
-            for it in o.items.select_related("variant").select_for_update():
-                v = it.variant
-                v.stock_qty = (v.stock_qty or 0) + int(it.qty or 0)
-                v.save(update_fields=["stock_qty"])
-
-        o.status = new_status
-        o.save(update_fields=["status"])
-
-        OrderStatusLog.objects.create(
-            order=o,
-            old_status=old_status,
-            new_status=new_status,
-            changed_by=request.user if request.user.is_authenticated else None,
-            note=note
-        )
-
-    return JsonResponse({"ok": True, "orderNo": o.order_no, "status": o.status})
-
+    return JsonResponse({"ok": True, "orderNo": order.order_no, "status": new_status})
 
 @user_passes_test(can_manage_orders)
 def admin_analytics_api(request):
