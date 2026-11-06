@@ -222,7 +222,8 @@ async function openOrderDetail(orderNo){
             <div class="orderItemRow">
               <div>
                 <div class="orderItemName">${it.name}</div>
-                <div class="orderItemMeta">${it.sku} • Option ${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
+                <div class="orderItemMeta">${escapeHtml(it.sku)} • Taille / option : ${escapeHtml(it.size)} • x${it.qty} • ${money(it.unit_price)}</div>
+                ${it.color ? `<div class="orderItemMeta" style="margin-top:4px;font-weight:700">Couleur : ${escapeHtml(it.color)}</div>` : ""}
               </div>
               <div class="orderItemTotal">${money(it.line_total)}</div>
             </div>
@@ -2704,7 +2705,8 @@ async function openResellerOrderDetail(orderNo){
           <div class="orderItemRow">
             <div>
               <div class="orderItemName">${it.name}</div>
-              <div class="orderItemMeta">${it.sku} • Option ${it.size} • x${it.qty} • ${money(it.unit_price)}</div>
+              <div class="orderItemMeta">${escapeHtml(it.sku)} • Taille / option : ${escapeHtml(it.size)} • x${it.qty} • ${money(it.unit_price)}</div>
+                ${it.color ? `<div class="orderItemMeta" style="margin-top:4px;font-weight:700">Couleur : ${escapeHtml(it.color)}</div>` : ""}
             </div>
             <div class="orderItemTotal">${money(it.line_total)}</div>
           </div>
@@ -3489,7 +3491,7 @@ async function renderTrackingFromApi(orderNo){
           <div class="row" style="justify-content:space-between;">
             <div>
               <div style="font-weight:700">${escapeHtml(it.name || "")}</div>
-              <div class="muted">${escapeHtml(it.sku || "")} • Option ${escapeHtml(it.size || "")} • x${it.qty}</div>
+              <div class="muted">${escapeHtml(it.sku || "")} • ${it.color ? `Couleur : ${escapeHtml(it.color)} • ` : ""}Option ${escapeHtml(it.size || "")} • x${it.qty}</div>
             </div>
             <div style="font-weight:800">${money(it.line_total)}</div>
           </div>

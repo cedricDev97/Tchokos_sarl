@@ -61,6 +61,8 @@ class OrderItem(models.Model):
     sku = models.CharField(max_length=40)
     product_name = models.CharField(max_length=200)
     size_value = models.CharField(max_length=50)
+    # EKAKO_ORDER_COLORS_V1 : instantané de la couleur au moment de la commande
+    color_name = models.CharField(max_length=50, blank=True, default="")
 
     unit_price = models.PositiveIntegerField(default=0)  # IMPORTANT
     qty = models.PositiveIntegerField(default=1)
