@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
-from orders.models import Order, OrderItem, OrderStatusLog
+from orders.models import Order, OrderItem, OrderStatusLog, PaymentStatusLog
 from django.utils import timezone
 #from django.views.decorators.csrf import csrf_exempt
 from catalog.models import Variant, Product
@@ -116,6 +116,9 @@ def checkout_api(request):
     pay_method = payload.get("pay_method", "MTN Mobile Money")
     if not isinstance(pay_method, str) or not pay_method.strip() or len(pay_method.strip()) > 80:
         return JsonResponse({"ok": False, "error": "Moyen de paiement invalide."}, status=400)
+
+    if pay_method.strip() not in {"MTN Mobile Money", "Orange Money", "Paiement a la livraison (optionnel)"}:
+        return JsonResponse({"ok": False, "error": "Moyen de paiement non pris en charge."}, status=400)
 
     pricing_mode = "reseller" if is_reseller(request.user) else "retail"
 
@@ -320,6 +323,16 @@ ALLOWED_TRANSITIONS = {
 }
 
 
+def is_cod_payment_method(method):
+    """Uniquement le mode de paiement à la livraison connu de notre checkout."""
+    value = str(method or "").strip().casefold()
+    return value in {"paiement a la livraison (optionnel)", "paiement à la livraison (optionnel)"}
+
+
+def digital_payment_confirmed(order):
+    return is_cod_payment_method(order.pay_method) or order.payment_state == "paid"
+
+
 def restock_order(order: Order):
     """
     Remet le stock des variantes liées à une commande.
@@ -364,6 +377,14 @@ def admin_update_status_api(request, order_no: str):
             if new_status not in ALLOWED_TRANSITIONS.get(old_status, set()):
                 return JsonResponse({"ok": False,
                                      "error": f"Transition interdite : {old_status} vers {new_status}."}, status=400)
+
+            # Paiement à la livraison : préparation / expédition permises avant encaissement.
+            # Mobile Money : ne jamais préparer/expédier une commande non confirmée.
+            if new_status in {"preparing", "shipped", "delivered"} and not digital_payment_confirmed(order):
+                return JsonResponse({
+                    "ok": False,
+                    "error": "Paiement Mobile Money non confirmé : préparation/expédition bloquée."
+                }, status=409)
 
             changed = Order.objects.filter(pk=order.pk, status=old_status).update(status=new_status)
             if changed != 1:
@@ -587,38 +608,97 @@ ALLOWED_PAYMENT_STATUSES = {"unpaid", "pending", "paid", "failed"}
 @user_passes_test(can_manage_payments)
 @require_POST
 def admin_update_payment_status_api(request, order_no: str):
+    """Validation manuelle auditée ; ne constitue PAS une vérification API MoMo."""
+    from django.db import OperationalError
+
     try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        payload = {}
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "JSON invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
 
-    new_status = (payload.get("payment_status") or "").strip().lower()
-    payment_ref = (payload.get("payment_ref") or "").strip()
-
-    if new_status not in {"unpaid", "pending", "paid", "failed"}:
+    new_status = payload.get("payment_status")
+    raw_reference = payload.get("payment_ref", "")
+    note = payload.get("note", "")
+    if not isinstance(new_status, str) or new_status.strip().lower() not in ALLOWED_PAYMENT_STATUSES:
         return JsonResponse({"ok": False, "error": "Statut de paiement invalide."}, status=400)
+    if not isinstance(raw_reference, str) or len(raw_reference.strip()) > 120:
+        return JsonResponse({"ok": False, "error": "Référence de paiement invalide."}, status=400)
+    if not isinstance(note, str) or len(note.strip()) > 255:
+        return JsonResponse({"ok": False, "error": "Note invalide."}, status=400)
+
+    new_status = new_status.strip().lower()
+    payment_ref = raw_reference.strip()
+    verified = payload.get("verified") is True
+
+    if new_status == "paid" and (not payment_ref or not verified):
+        return JsonResponse({
+            "ok": False,
+            "error": "Pour marquer Payé : référence obligatoire et vérification manuelle explicite requise."
+        }, status=400)
 
     try:
-        o = Order.objects.get(order_no__iexact=(order_no or "").strip())
-    except Order.DoesNotExist:
-        return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+        with transaction.atomic():
+            try:
+                order = Order.objects.select_for_update().get(order_no__iexact=(order_no or "").strip())
+            except Order.DoesNotExist:
+                return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
 
-    o.payment_state = new_status
-    o.payment_reference = payment_ref
+            old_state = order.payment_state
+            old_reference = order.payment_reference or ""
 
-    if new_status == "paid":
-        o.paid_at = timezone.now()
-    else:
-        o.paid_at = None
+            if old_state == "paid":
+                if new_status == "paid" and old_reference == payment_ref:
+                    return JsonResponse({
+                        "ok": True, "orderNo": order.order_no,
+                        "payment_status": old_state, "payment_ref": old_reference,
+                        "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+                    })
+                return JsonResponse({
+                    "ok": False,
+                    "error": "Paiement déjà confirmé : correction/remboursement à traiter via procédure dédiée."
+                }, status=409)
 
-    o.save()
+            if new_status == "paid":
+                if order.status in {"cancelled", "failed"}:
+                    return JsonResponse({
+                        "ok": False,
+                        "error": "Commande clôturée : vérifier un éventuel paiement tardif avant rapprochement/remboursement."
+                    }, status=409)
+                if is_cod_payment_method(order.pay_method) and order.status != "delivered":
+                    return JsonResponse({
+                        "ok": False,
+                        "error": "Paiement à la livraison : marquer Livrée avant de confirmer l'encaissement."
+                    }, status=409)
+                if Order.objects.filter(payment_state="paid", payment_reference__iexact=payment_ref).exclude(pk=order.pk).exists():
+                    return JsonResponse({
+                        "ok": False,
+                        "error": "Référence déjà utilisée sur une autre commande payée."
+                    }, status=409)
+
+            # La transaction protège l'écriture et son journal.
+            changed = Order.objects.filter(pk=order.pk, payment_state=old_state).update(
+                payment_state=new_status,
+                payment_reference=payment_ref,
+                paid_at=timezone.now() if new_status == "paid" else None,
+            )
+            if changed != 1:
+                return JsonResponse({"ok": False, "error": "Paiement modifié entre-temps. Actualise."}, status=409)
+            PaymentStatusLog.objects.create(
+                order=order, old_state=old_state, new_state=new_status,
+                reference=payment_ref, note=note.strip(), changed_by=request.user,
+            )
+            order.refresh_from_db(fields=["payment_state", "payment_reference", "paid_at"])
+    except OperationalError:
+        return JsonResponse({"ok": False, "error": "Paiement momentanément occupé. Réessaie."}, status=503)
 
     return JsonResponse({
         "ok": True,
-        "orderNo": o.order_no,
-        "payment_status": o.payment_state,
-        "payment_ref": o.payment_reference,
-        "paid_at": o.paid_at.isoformat() if o.paid_at else None,
+        "orderNo": order.order_no,
+        "payment_status": order.payment_state,
+        "payment_ref": order.payment_reference,
+        "paid_at": order.paid_at.isoformat() if order.paid_at else None,
     })
 
 @login_required

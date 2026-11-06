@@ -84,4 +84,20 @@ class OrderStatusLog(models.Model):
         ordering = ["-created_at"]
 
 
+
+class PaymentStatusLog(models.Model):
+    """Journal immuable en pratique des modifications manuelles du statut de paiement."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payment_logs")
+    old_state = models.CharField(max_length=20)
+    new_state = models.CharField(max_length=20)
+    reference = models.CharField(max_length=120, blank=True, default="")
+    note = models.CharField(max_length=255, blank=True, default="")
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
 # Create your models here.

@@ -270,11 +270,12 @@ async function openOrderDetail(orderNo){
   }
 }
 
-async function updatePaymentStatus(orderNo, payment_status, payment_ref = ""){
+async function updatePaymentStatus(orderNo, payment_status, payment_ref = "", verified = false){
   try{
     const data = await apiPost(`/api/admin/order/${encodeURIComponent(orderNo)}/payment-status/`, {
       payment_status,
-      payment_ref
+      payment_ref,
+      verified
     });
 
     if(!data.ok){
@@ -291,12 +292,14 @@ async function updatePaymentStatus(orderNo, payment_status, payment_ref = ""){
 
 function markOrderPaid(orderNo){
   const currentRef = (byId("paymentRefInput")?.value || "").trim();
-  const ref = prompt("Référence paiement (optionnel) :", currentRef);
-
-  // si l'utilisateur annule le prompt
+  const ref = prompt("Référence de transaction / reçu obligatoire :", currentRef);
   if(ref === null) return;
-
-  updatePaymentStatus(orderNo, "paid", ref.trim());
+  if(!ref.trim()){
+    alert("Renseigne la référence de transaction vérifiée avant de confirmer le paiement.");
+    return;
+  }
+  if(!confirm("As-tu vérifié l'encaissement réel auprès de MTN/Orange Money ou du caissier pour le paiement à la livraison ? Cette action sera journalisée.")) return;
+  updatePaymentStatus(orderNo, "paid", ref.trim(), true);
 }
 
 function markOrderPaymentPending(orderNo){
