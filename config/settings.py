@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'storefront',
     'catalog',
     'orders',
+    'sourcing.apps.SourcingConfig',
     'accounts',
     'django_extensions',
 ]

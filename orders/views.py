@@ -192,7 +192,7 @@ def checkout_api(request):
             if order is None:
                 raise CheckoutRejected("Numéro de commande indisponible. Réessaie.")
 
-            OrderItem.objects.bulk_create([
+            created_items = OrderItem.objects.bulk_create([
                 OrderItem(
                     order=order, variant=variant, sku=product.sku,
                     product_name=product.name, size_value=variant.size.label,
@@ -201,6 +201,33 @@ def checkout_api(request):
                 )
                 for variant, product, qty, unit_price, line_total in order_lines
             ])
+
+            # EKAKO_MODELE_B_V1 : une fiche de collecte par article et une livraison
+            # par commande. Aucun appel externe ni paiement fournisseur effectué ici.
+            from sourcing.models import SupplierOffer, ProcurementLine, DeliveryTask
+            offers = {
+                offer.product_id: offer
+                for offer in SupplierOffer.objects.select_related("supplier").filter(
+                    product_id__in=[product.pk for _, product, _, _, _ in order_lines]
+                )
+            }
+            requests = []
+            for created_item, (variant, product, qty, unit_price, line_total) in zip(created_items, order_lines):
+                offer = offers.get(product.pk)
+                if offer and offer.availability_state == "unavailable":
+                    request_status = "unavailable"
+                elif offer and offer.supplier.status == "active":
+                    request_status = "to_confirm"
+                else:
+                    request_status = "unassigned"
+                requests.append(ProcurementLine(
+                    order_item=created_item,
+                    supplier=offer.supplier if offer else None,
+                    unit_cost=offer.purchase_price if offer else None,
+                    status=request_status,
+                ))
+            ProcurementLine.objects.bulk_create(requests)
+            DeliveryTask.objects.create(order=order)
     except CheckoutRejected as exc:
         # L'atomicité annule aussi toute décrémentation déjà effectuée.
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
