@@ -202,9 +202,12 @@ def checkout_api(request):
                             f"MOQ non atteint pour {product.sku} : minimum {minimum}, demandé {sku_totals[product.sku]}."
                         )
 
-            # Mise à jour conditionnelle exécutée par la BD : pas de stock négatif,
-            # même si une autre commande survient entre la lecture et l'écriture.
-            for variant, product, qty, unit_price, line_total in order_lines:
+            # Mise à jour conditionnelle exécutée par la BD : pas de stock négatif.
+            # L'ordre croissant des PK limite les deadlocks en cas de paniers
+            # contenant plusieurs variantes demandées en ordre inverse.
+            for variant, product, qty, unit_price, line_total in sorted(
+                order_lines, key=lambda row: row[0].pk
+            ):
                 changed = Variant.objects.filter(
                     pk=variant.pk, stock_qty__gte=qty
                 ).update(stock_qty=F("stock_qty") - qty)

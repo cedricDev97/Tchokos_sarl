@@ -128,6 +128,33 @@ DATABASES = {
 }
 
 
+# EKAKO_P0_B — Basculer vers PostgreSQL uniquement par variables d'environnement.
+# Le développement local continue sur SQLite sans modifier db.sqlite3.
+EKAKO_DB_ENGINE = os.environ.get("EKAKO_DB_ENGINE", "sqlite").strip().lower()
+if EKAKO_DB_ENGINE not in {"sqlite", "postgresql"}:
+    raise RuntimeError("EKAKO_DB_ENGINE doit être sqlite ou postgresql")
+if IS_PRODUCTION and EKAKO_DB_ENGINE != "postgresql":
+    raise RuntimeError("eKAKO production requiert PostgreSQL (EKAKO_DB_ENGINE=postgresql).")
+if EKAKO_DB_ENGINE == "postgresql":
+    required = ("EKAKO_DB_NAME", "EKAKO_DB_USER", "EKAKO_DB_PASSWORD", "EKAKO_DB_HOST")
+    missing = [name for name in required if not os.environ.get(name, "").strip()]
+    if missing:
+        raise RuntimeError("Configuration PostgreSQL incomplète: " + ", ".join(missing))
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["EKAKO_DB_NAME"],
+        "USER": os.environ["EKAKO_DB_USER"],
+        "PASSWORD": os.environ["EKAKO_DB_PASSWORD"],
+        "HOST": os.environ["EKAKO_DB_HOST"],
+        "PORT": os.environ.get("EKAKO_DB_PORT", "5432"),
+        "CONN_MAX_AGE": 0,
+        "OPTIONS": {
+            "connect_timeout": 10,
+            "sslmode": os.environ.get("EKAKO_DB_SSLMODE", "require" if IS_PRODUCTION else "prefer"),
+        },
+    }
+
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -164,4 +191,5 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
-DATABASES["default"]["OPTIONS"] = {"timeout": 20}
+if EKAKO_DB_ENGINE == "sqlite":
+    DATABASES["default"]["OPTIONS"] = {"timeout": 20}
