@@ -13,6 +13,7 @@ from .views import (
 
 urlpatterns = [
     path("checkout/", checkout_api, name="checkout_api"),
+    path("admin/order/<str:order_no>/cod-collection/", views.admin_cod_collect_api, name="admin_cod_collect_api"),
     path("track/<str:order_no>/", track_api, name="track_api"),
 
     path("admin/stats/", admin_stats_api, name="admin_stats_api"),

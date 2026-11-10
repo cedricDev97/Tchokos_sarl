@@ -92,6 +92,20 @@ class TransactionP0Tests(TestCase):
         delivery.status = "delivered"
         delivery.delivery_note = "Remis au client test"
         delivery.save()
+
+        # P0-C : livraison bloquee sans declaration d'encaissement.
+        self.assertEqual(self.update_status(order, "delivered").status_code, 409)
+
+        receipt = self.client.post(
+            reverse("admin_cod_collect_api", kwargs={"order_no": order.order_no}),
+            data=json.dumps({
+                "amount": order.total,
+                "reference": "CASH-P0A-DELIVERY-0001",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(receipt.status_code, 200, receipt.content)
+
         self.assertEqual(self.update_status(order, "delivered").status_code, 200)
 
     def test_cancelling_from_received_restocks_once(self):

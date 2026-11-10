@@ -11,7 +11,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
-from orders.models import Order, OrderItem, OrderStatusLog, PaymentStatusLog, CheckoutAttempt
+from orders.models import Order, OrderItem, OrderStatusLog, PaymentStatusLog, CheckoutAttempt, CODCollection
 from django.utils import timezone
 #from django.views.decorators.csrf import csrf_exempt
 from catalog.models import Variant, Product
@@ -457,6 +457,19 @@ def admin_update_status_api(request, order_no: str):
                 return JsonResponse({"ok": False,
                                      "error": f"Transition interdite : {old_status} vers {new_status}."}, status=400)
 
+            # Une commande payée ne peut pas être annulée sans procédure de remboursement.
+            # Une réservation fournisseur confirmée/collectée nécessite une résolution préalable.
+            if new_status in {"cancelled", "failed"}:
+                from sourcing.models import ProcurementLine
+                if order.payment_state == "paid" or CODCollection.objects.filter(order=order).exists():
+                    return JsonResponse({
+                        "ok": False, "error": "Encaissement enregistré : annulation bloquée, rapprochement/remboursement requis."
+                    }, status=409)
+                if ProcurementLine.objects.filter(order_item__order=order, status__in={"confirmed", "collected"}).exists():
+                    return JsonResponse({
+                        "ok": False, "error": "Libère la réservation fournisseur ou traite le retour avant d'annuler."
+                    }, status=409)
+
             # Paiement à la livraison : préparation / expédition permises avant encaissement.
             # Mobile Money : ne jamais préparer/expédier une commande non confirmée.
             if new_status in {"preparing", "shipped", "delivered"} and not digital_payment_confirmed(order):
@@ -495,6 +508,12 @@ def admin_update_status_api(request, order_no: str):
                         return JsonResponse({
                             "ok": False, "error": "Confirme la remise dans la fiche de livraison."
                         }, status=409)
+                    if new_status == "delivered" and is_cod_payment_method(order.pay_method):
+                        receipt = CODCollection.objects.select_for_update().filter(order=order).first()
+                        if receipt is None or receipt.amount != order.total:
+                            return JsonResponse({
+                                "ok": False, "error": "Déclare l'encaissement COD complet avant de marquer Livrée."
+                            }, status=409)
 
             changed = Order.objects.filter(pk=order.pk, status=old_status).update(status=new_status)
             if changed != 1:
@@ -505,6 +524,12 @@ def admin_update_status_api(request, order_no: str):
                     Variant.objects.filter(pk=item.variant_id).update(
                         stock_qty=F("stock_qty") + item.qty
                     )
+
+            if new_status in {"cancelled", "failed"}:
+                from sourcing.models import ProcurementLine
+                ProcurementLine.objects.filter(order_item__order=order).exclude(
+                    status="collected"
+                ).update(status="cancelled")
 
             OrderStatusLog.objects.create(
                 order=order, old_status=old_status, new_status=new_status,
@@ -713,6 +738,79 @@ def admin_order_detail_api(request, order_no: str):
     }
 })
 
+
+
+@user_passes_test(can_manage_orders)
+@require_POST
+def admin_cod_collect_api(request, order_no: str):
+    """Déclaration manuelle COD, traçable et idempotente ; aucune monnaie transmise."""
+    from django.db import OperationalError, IntegrityError
+    from sourcing.models import DeliveryTask
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "JSON invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+
+    amount = payload.get("amount")
+    raw_reference = payload.get("reference")
+    note = payload.get("note", "")
+    if isinstance(amount, bool) or not isinstance(amount, int) or amount < 1:
+        return JsonResponse({"ok": False, "error": "Montant COD invalide."}, status=400)
+    if not isinstance(raw_reference, str):
+        return JsonResponse({"ok": False, "error": "Référence COD invalide."}, status=400)
+    reference = raw_reference.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9][A-Z0-9_-]{7,79}", reference):
+        return JsonResponse({"ok": False, "error": "Référence COD invalide (8-80 caractères)."}, status=400)
+    if not isinstance(note, str) or len(note.strip()) > 255:
+        return JsonResponse({"ok": False, "error": "Note invalide."}, status=400)
+
+    try:
+        with transaction.atomic():
+            try:
+                order = Order.objects.select_for_update().get(order_no__iexact=order_no.strip())
+            except Order.DoesNotExist:
+                return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+
+            if not is_cod_payment_method(order.pay_method):
+                return JsonResponse({"ok": False, "error": "Commande non COD."}, status=409)
+            if order.status not in {"shipped", "delivered"} or order.payment_state == "paid":
+                return JsonResponse({"ok": False, "error": "Encaissement COD non autorisé à cette étape."}, status=409)
+            if amount != order.total:
+                return JsonResponse({"ok": False, "error": "Le montant doit correspondre au total de la commande."}, status=400)
+
+            delivery = DeliveryTask.objects.select_for_update().filter(order=order).first()
+            if (delivery is None or
+                    delivery.status not in {"assigned", "out_for_delivery", "delivered"} or
+                    not delivery.courier_name.strip()):
+                return JsonResponse({"ok": False, "error": "Livreur non affecté ou livraison absente."}, status=409)
+
+            existing = CODCollection.objects.filter(order=order).first()
+            if existing:
+                if (existing.reference, existing.amount, existing.courier_name) == (
+                    reference, amount, delivery.courier_name.strip()
+                ):
+                    return JsonResponse({"ok": True, "orderNo": order.order_no, "reference": reference,
+                                         "amount": amount, "idempotent": True})
+                return JsonResponse({"ok": False, "error": "Un encaissement différent a déjà été déclaré."}, status=409)
+
+            try:
+                with transaction.atomic():
+                    CODCollection.objects.create(
+                        order=order, amount=amount, reference=reference,
+                        courier_name=delivery.courier_name.strip(),
+                        note=note.strip(), recorded_by=request.user,
+                    )
+            except IntegrityError:
+                return JsonResponse({"ok": False, "error": "Référence COD déjà utilisée."}, status=409)
+    except OperationalError:
+        return JsonResponse({"ok": False, "error": "Encaissement momentanément occupé. Réessaie."}, status=503)
+
+    return JsonResponse({"ok": True, "orderNo": order.order_no,
+                         "reference": reference, "amount": amount})
+
 ALLOWED_PAYMENT_STATUSES = {"unpaid", "pending", "paid", "failed"}
 
 @user_passes_test(can_manage_payments)
@@ -757,6 +855,7 @@ def admin_update_payment_status_api(request, order_no: str):
 
             old_state = order.payment_state
             old_reference = order.payment_reference or ""
+            cod_receipt = None
 
             if old_state == "paid":
                 if new_status == "paid" and old_reference == payment_ref:
@@ -781,6 +880,21 @@ def admin_update_payment_status_api(request, order_no: str):
                         "ok": False,
                         "error": "Paiement à la livraison : marquer Livrée avant de confirmer l'encaissement."
                     }, status=409)
+                # Pour les NOUVELLES commandes COD : rapprochement obligatoire
+                # avec la déclaration d'encaissement réalisée par le livreur.
+                if is_cod_payment_method(order.pay_method):
+                    from sourcing.models import DeliveryTask
+                    if DeliveryTask.objects.filter(order=order).exists():
+                        cod_receipt = CODCollection.objects.select_for_update().filter(order=order).first()
+                        if cod_receipt is None or cod_receipt.amount != order.total:
+                            return JsonResponse({
+                                "ok": False, "error": "Déclaration COD absente ou montant incorrect."
+                            }, status=409)
+                        if cod_receipt.reference != payment_ref:
+                            return JsonResponse({
+                                "ok": False, "error": "Référence différente de la déclaration COD."
+                            }, status=409)
+
                 if Order.objects.filter(payment_state="paid", payment_reference__iexact=payment_ref).exclude(pk=order.pk).exists():
                     return JsonResponse({
                         "ok": False,
@@ -799,6 +913,10 @@ def admin_update_payment_status_api(request, order_no: str):
                 order=order, old_state=old_state, new_state=new_status,
                 reference=payment_ref, note=note.strip(), changed_by=request.user,
             )
+            if new_status == "paid" and cod_receipt is not None:
+                CODCollection.objects.filter(pk=cod_receipt.pk, verified_at__isnull=True).update(
+                    verified_at=timezone.now(), verified_by=request.user,
+                )
             order.refresh_from_db(fields=["payment_state", "payment_reference", "paid_at"])
     except OperationalError:
         return JsonResponse({"ok": False, "error": "Paiement momentanément occupé. Réessaie."}, status=503)

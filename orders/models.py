@@ -1,6 +1,7 @@
 from django.db import models
 from catalog.models import Variant
 from django.conf import settings
+from django.utils import timezone
 
 class Order(models.Model):
     ORDER_STEPS = [
@@ -71,6 +72,35 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.order.order_no} - {self.sku} T{self.size_value} x{self.qty}"
     
+
+
+class CODCollection(models.Model):
+    """Déclaration MANUELLE d'espèces reçues par le livreur ; aucun transfert financier."""
+    order = models.OneToOneField(
+        "orders.Order", related_name="cod_collection", on_delete=models.PROTECT,
+    )
+    amount = models.PositiveIntegerField("Montant perçu (FCFA)")
+    reference = models.CharField("Référence d'encaissement", max_length=80, unique=True)
+    courier_name = models.CharField("Livreur collecteur", max_length=120)
+    note = models.CharField(max_length=255, blank=True)
+    collected_at = models.DateTimeField(default=timezone.now)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="cod_collections_recorded",
+        on_delete=models.SET_NULL, null=True,
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="cod_collections_verified",
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
+
+    class Meta:
+        ordering = ["-collected_at"]
+        verbose_name = "Encaissement à la livraison"
+        verbose_name_plural = "Encaissements à la livraison"
+
+    def __str__(self):
+        return f"{self.order.order_no} · {self.amount} FCFA · {self.reference}"
 
 class CheckoutAttempt(models.Model):
     """Clé serveur unique : une tentative client = au plus une commande.
