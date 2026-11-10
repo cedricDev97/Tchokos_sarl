@@ -3324,6 +3324,24 @@ async function loadResellerStats(){
     renderCart();
   }
 
+// Même panier + mêmes coordonnées = même clé après une erreur réseau.
+// Seule l'empreinte SHA-256 (pas les données du client) est conservée dans sessionStorage.
+async function ekakoCheckoutAttempt(payload){
+  if(!globalThis.crypto?.randomUUID || !globalThis.crypto?.subtle){
+    throw new Error("Navigateur non compatible avec le paiement sécurisé (HTTPS requis).");
+  }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(payload)));
+  const fingerprint = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,"0")).join("");
+  let stored = null;
+  try{ stored = JSON.parse(sessionStorage.getItem("ekako_checkout_attempt_v1") || "null"); }catch(_e){}
+  if(stored?.fingerprint === fingerprint && /^[A-Za-z0-9_-]{16,64}$/.test(stored.key || "")){
+    return stored.key;
+  }
+  const key = crypto.randomUUID();
+  sessionStorage.setItem("ekako_checkout_attempt_v1", JSON.stringify({ fingerprint, key }));
+  return key;
+}
+
 async function payNow(){
   if(cart.length===0) return;
 
@@ -3375,13 +3393,14 @@ async function payNow(){
 
   try{
     const csrf = getCookie("csrftoken");
-    console.log("CHECKOUT PAYLOAD", JSON.stringify(payload, null, 2));
+    const attemptKey = await ekakoCheckoutAttempt(payload);
     const res = await fetch("/api/checkout/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": csrf,
-        "X-Requested-With": "XMLHttpRequest"
+        "X-Requested-With": "XMLHttpRequest",
+        "Idempotency-Key": attemptKey
       },
       credentials: "same-origin",
       body: JSON.stringify(payload)
@@ -3397,6 +3416,7 @@ async function payNow(){
     }
 
     const orderNo = data.orderNo;
+    sessionStorage.removeItem("ekako_checkout_attempt_v1");
     const finalTotal = total;
 
     if(byId("orderNo")) byId("orderNo").textContent = orderNo;

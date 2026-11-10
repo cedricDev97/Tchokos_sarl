@@ -1,4 +1,7 @@
 import json, random
+import hashlib
+import re
+from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -8,7 +11,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
-from orders.models import Order, OrderItem, OrderStatusLog, PaymentStatusLog
+from orders.models import Order, OrderItem, OrderStatusLog, PaymentStatusLog, CheckoutAttempt
 from django.utils import timezone
 #from django.views.decorators.csrf import csrf_exempt
 from catalog.models import Variant, Product
@@ -122,8 +125,52 @@ def checkout_api(request):
 
     pricing_mode = "reseller" if is_reseller(request.user) else "retail"
 
+    # Le navigateur conserve cette clé en cas de timeout/rejeu.
+    # En production, une clé explicite est obligatoire.
+    checkout_key = (request.headers.get("Idempotency-Key") or "").strip()
+    if not checkout_key and getattr(settings, "IS_PRODUCTION", False):
+        return JsonResponse({"ok": False, "error": "Clé de commande manquante."}, status=400)
+    if not checkout_key:
+        checkout_key = uuid.uuid4().hex  # compatibilité avec anciens tests / développement
+    if not re.fullmatch(r"[A-Za-z0-9_-]{16,64}", checkout_key):
+        return JsonResponse({"ok": False, "error": "Clé de commande invalide."}, status=400)
+
+    canonical_request = {
+        "customer": clean_customer,
+        "items": sorted([[sku, size, qty] for (sku, size), qty in quantities.items()]),
+        "pay_method": pay_method.strip(),
+        "mode": pricing_mode,
+        "user_id": request.user.pk if request.user.is_authenticated else None,
+    }
+    request_hash = hashlib.sha256(
+        json.dumps(canonical_request, ensure_ascii=False, sort_keys=True,
+                   separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
     try:
         with transaction.atomic():
+            # La contrainte UNIQUE fait attendre les tentatives concurrentes
+            # sur PostgreSQL, AVANT toute modification de disponibilité.
+            try:
+                with transaction.atomic():
+                    checkout_attempt = CheckoutAttempt.objects.create(
+                        key=checkout_key, request_hash=request_hash,
+                    )
+            except IntegrityError:
+                previous = CheckoutAttempt.objects.select_related("order").get(key=checkout_key)
+                if previous.request_hash != request_hash:
+                    return JsonResponse({
+                        "ok": False, "error": "Cette clé a déjà été utilisée pour une autre commande."
+                    }, status=409)
+                if not previous.order_id:
+                    return JsonResponse({
+                        "ok": False, "error": "Commande en cours de confirmation. Réessaie."
+                    }, status=503)
+                return JsonResponse({
+                    "ok": True, "orderNo": previous.order.order_no,
+                    "mode": previous.order.mode, "idempotent": True,
+                })
+
             order_lines = []
             sku_totals = {}
             subtotal = 0
@@ -228,6 +275,8 @@ def checkout_api(request):
                 ))
             ProcurementLine.objects.bulk_create(requests)
             DeliveryTask.objects.create(order=order)
+            checkout_attempt.order = order
+            checkout_attempt.save(update_fields=["order"])
     except CheckoutRejected as exc:
         # L'atomicité annule aussi toute décrémentation déjà effectuée.
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
@@ -412,6 +461,37 @@ def admin_update_status_api(request, order_no: str):
                     "ok": False,
                     "error": "Paiement Mobile Money non confirmé : préparation/expédition bloquée."
                 }, status=409)
+
+            # Modèle B : commandes créées depuis le checkout (fiche de livraison présente).
+            # Les anciennes commandes sans sourcing restent consultables et gérables.
+            if new_status in {"preparing", "shipped", "delivered"}:
+                from sourcing.models import DeliveryTask, ProcurementLine
+                delivery = DeliveryTask.objects.select_for_update().filter(order=order).first()
+                if delivery is not None:
+                    sourcing_rows = ProcurementLine.objects.select_for_update().filter(order_item__order=order)
+                    if sourcing_rows.count() != order.items.count():
+                        return JsonResponse({
+                            "ok": False, "error": "Approvisionnement incomplet : lignes manquantes."
+                        }, status=409)
+                    if new_status == "preparing" and sourcing_rows.exclude(
+                        status__in={"confirmed", "collected"}
+                    ).exists():
+                        return JsonResponse({
+                            "ok": False, "error": "Le commerçant doit confirmer tous les articles."
+                        }, status=409)
+                    if new_status == "shipped":
+                        if sourcing_rows.exclude(status="collected").exists():
+                            return JsonResponse({
+                                "ok": False, "error": "Expédition bloquée : tous les articles ne sont pas collectés."
+                            }, status=409)
+                        if delivery.status not in {"assigned", "out_for_delivery"} or not delivery.courier_name.strip():
+                            return JsonResponse({
+                                "ok": False, "error": "Affecte un livreur avant l'expédition."
+                            }, status=409)
+                    if new_status == "delivered" and delivery.status != "delivered":
+                        return JsonResponse({
+                            "ok": False, "error": "Confirme la remise dans la fiche de livraison."
+                        }, status=409)
 
             changed = Order.objects.filter(pk=order.pk, status=old_status).update(status=new_status)
             if changed != 1:

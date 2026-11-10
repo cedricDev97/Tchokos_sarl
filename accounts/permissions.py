@@ -6,7 +6,6 @@ def has_group(user, group_name: str) -> bool:
 def is_super_admin(user) -> bool:
     return user.is_authenticated and (
         user.is_superuser
-        or user.is_staff
         or has_group(user, "super_admin")
     )
 

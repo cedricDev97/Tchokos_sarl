@@ -1,6 +1,7 @@
 """Tests isolés : uniquement sur la base temporaire du runner Django."""
 import json
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from catalog.models import Product, Size, Variant
 from orders.models import Order, OrderItem
@@ -55,6 +56,8 @@ class OrderColorTests(TestCase):
         user = get_user_model().objects.create_user(
             username='admin_color_test', password='test_password', is_staff=True,
         )
+        group, _ = Group.objects.get_or_create(name='admin_orders')
+        user.groups.add(group)
         self.client.force_login(user)
         response = self.client.get(f'/api/admin/order/{order.order_no}/')
         self.assertEqual(response.status_code, 200, response.content)
@@ -65,6 +68,8 @@ class OrderColorTests(TestCase):
         user = get_user_model().objects.create_user(
             username='staff_color_test', password='test_password', is_staff=True,
         )
+        group, _ = Group.objects.get_or_create(name='admin_orders')
+        user.groups.add(group)
         self.client.force_login(user)
         response = self.client.get(f'/api/admin/order/{order.order_no}/')
         self.assertEqual(response.status_code, 200, response.content)

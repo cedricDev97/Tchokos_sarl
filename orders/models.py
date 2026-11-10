@@ -72,6 +72,22 @@ class OrderItem(models.Model):
         return f"{self.order.order_no} - {self.sku} T{self.size_value} x{self.qty}"
     
 
+class CheckoutAttempt(models.Model):
+    """Clé serveur unique : une tentative client = au plus une commande.
+    Aucun nom, téléphone ou panier brut n'est conservé dans cette table.
+    """
+    key = models.CharField(max_length=64, unique=True)
+    request_hash = models.CharField(max_length=64)
+    order = models.OneToOneField(
+        "orders.Order", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="checkout_attempt",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.key
+
+
 class OrderStatusLog(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="status_logs")
     old_status = models.CharField(max_length=20)
