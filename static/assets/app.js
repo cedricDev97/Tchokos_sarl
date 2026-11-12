@@ -958,7 +958,9 @@ function applyRecommendedVariantType(){
   let stockMap = {}; 
  async function loadProductsFromApi(){
   const res = await fetch("/api/products/");
+  if (!res.ok) throw new Error(res.status === 503 ? "Boutique temporairement en maintenance." : "Catalogue indisponible.");
   const data = await res.json();
+  if (!Array.isArray(data.results)) throw new Error("Réponse catalogue invalide.");
 
   stockMap = {};
 
@@ -2294,10 +2296,20 @@ function productSearchText(p){
 
   if(!list.length){
     grid.innerHTML = `
-      <div class="muted" style="padding:16px;">
-        Aucun produit trouvé.
+      <div class="ekako-empty-state" role="status" style="padding:24px;text-align:center;border:1px dashed #ccd3df;border-radius:16px;">
+        <div style="font-size:30px" aria-hidden="true">🔎</div>
+        <strong>Aucun produit trouvé</strong>
+        <p class="muted">Essayez une autre recherche ou supprimez les filtres.</p>
+        <button class="btn small" type="button" id="ekakoResetSearch">Afficher tous les produits</button>
       </div>
     `;
+    grid.querySelector("#ekakoResetSearch")?.addEventListener("click", () => {
+      query = ""; brand = "ALL"; cat = "ALL";
+      if(byId("search")) byId("search").value = "";
+      if(byId("brandFilter")) byId("brandFilter").value = "ALL";
+      if(byId("catFilter")) byId("catFilter").value = "ALL";
+      renderProducts();
+    });
     return;
   }
 
@@ -3179,6 +3191,10 @@ async function loadResellerStats(){
   }
 
   wrap.innerHTML = "";
+  if(cart.length === 0){
+    wrap.innerHTML = '<div class="ekako-empty-state" role="status" style="text-align:center;padding:24px 16px;border:1px dashed #ccd3df;border-radius:16px;"><div style="font-size:28px">🛒</div><strong>Votre panier est vide</strong><p class="muted">Découvrez nos sélections et ajoutez des articles.</p><button class="btn small" type="button" id="ekakoExploreProducts">Explorer la boutique</button></div>';
+    wrap.querySelector("#ekakoExploreProducts")?.addEventListener("click", () => { closeEkakoCartDrawer(); goTab("shop"); });
+  }
 
   cart.forEach((i, idx)=>{
     const p = getProduct(i.sku);
@@ -3394,13 +3410,15 @@ async function payNow(){
   try{
     const csrf = getCookie("csrftoken");
     const attemptKey = await ekakoCheckoutAttempt(payload);
+    const captchaToken = await window.ekakoGetTurnstileToken("checkout");
     const res = await fetch("/api/checkout/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": csrf,
         "X-Requested-With": "XMLHttpRequest",
-        "Idempotency-Key": attemptKey
+        "Idempotency-Key": attemptKey,
+        "X-Ekako-Turnstile": captchaToken
       },
       credentials: "same-origin",
       body: JSON.stringify(payload)
@@ -4502,7 +4520,8 @@ async function submitLoginFromModal(){
   }
 
   try{
-    const data = await apiPost("/api/admin/login/", { username, password });
+    const turnstile_token = await window.ekakoGetTurnstileToken("login");
+    const data = await apiPost("/api/admin/login/", { username, password, turnstile_token });
 
     if(!data.ok){
       showAuthNote(data.error || "Connexion impossible.");
@@ -4555,10 +4574,12 @@ async function submitRegisterFromModal(){
   }
 
   try{
+    const turnstile_token = await window.ekakoGetTurnstileToken("register");
     const data = await apiPost("/api/admin/register/", {
       username,
       phone,
-      password
+      password,
+      turnstile_token
     });
 
     if(!data.ok){
@@ -4583,7 +4604,17 @@ async function submitRegisterFromModal(){
 
 
   (async function boot(){
-    await loadProductsFromApi();   // charge les produits depuis Django
+    try {
+      await loadProductsFromApi();
+    } catch (err) {
+      const grid = byId("productGrid");
+      if(grid) {
+        grid.innerHTML = '<div role="alert" style="padding:24px;border:1px solid #e5a4a4;border-radius:14px"><strong>Impossible de charger le catalogue.</strong><p>Vérifiez votre connexion et réessayez.</p><button class="btn small" id="ekakoRetryCatalog" type="button">Réessayer</button></div>';
+        grid.querySelector("#ekakoRetryCatalog")?.addEventListener("click", () => window.location.reload());
+      }
+      console.error("eKAKO catalogue:", err);
+      return;
+    }
     initFilters();
     initCategoryControls();
     initCityQuarter();
@@ -4728,7 +4759,9 @@ async function submitResellerApplication(){
   }
 
   try{
+    const turnstile_token = await window.ekakoGetTurnstileToken("reseller");
     const data = await apiPost("/api/reseller/apply/", {
+      turnstile_token,
       full_name,
       phone,
       city,
