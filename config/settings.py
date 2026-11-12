@@ -92,6 +92,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.EkakoMaintenanceMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -207,3 +208,12 @@ if IS_PRODUCTION:
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
+
+# eKAKO stabilisation: activation depuis les variables d'environnement.
+EKAKO_MAINTENANCE = os.environ.get("EKAKO_MAINTENANCE", "0") == "1"
+EKAKO_TURNSTILE_ENABLED = os.environ.get("EKAKO_TURNSTILE_ENABLED", "0") == "1"
+EKAKO_TURNSTILE_SITE_KEY = os.environ.get("EKAKO_TURNSTILE_SITE_KEY", "").strip()
+EKAKO_TURNSTILE_SECRET_KEY = os.environ.get("EKAKO_TURNSTILE_SECRET_KEY", "").strip()
+EKAKO_TURNSTILE_HOSTNAME = os.environ.get("EKAKO_TURNSTILE_HOSTNAME", "").strip().lower()
+if EKAKO_TURNSTILE_ENABLED and not (EKAKO_TURNSTILE_SITE_KEY and EKAKO_TURNSTILE_SECRET_KEY):
+    raise RuntimeError("Clés Turnstile obligatoires lorsqu'il est activé")
