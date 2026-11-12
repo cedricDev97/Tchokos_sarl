@@ -4,10 +4,13 @@ Les clés de test officielles n'incluent pas `action` dans le résultat Siteveri
 Seul DEBUG=True ET une paire de clés de test connues autorisent cette exception.
 """
 import json
+import logging
 from urllib import parse, request as http_request
 
 from django.conf import settings
 from django.http import JsonResponse
+
+logger = logging.getLogger(__name__)
 
 _TEST_SITE_KEYS = frozenset({
     "1x00000000000000000000AA",  # succès
@@ -45,6 +48,9 @@ def verify_turnstile(request, data, action):
         with http_request.urlopen(req, timeout=5) as response:
             result = json.loads(response.read(16384).decode("utf-8"))
     except (OSError, ValueError, UnicodeDecodeError):
+        # Aucun jeton ni clé secrète dans les logs : seulement le type
+        # d'erreur réseau/certificat ou de décodage pour le diagnostic.
+        logger.exception("Cloudflare Turnstile Siteverify indisponible")
         return JsonResponse(
             {"ok": False, "error": "Vérification anti-robot indisponible. Réessayez."},
             status=503,
