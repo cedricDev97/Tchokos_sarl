@@ -43,3 +43,29 @@ les reverse proxies et le stockage persistant des photos produits.
 - CAPTCHA avec clés réelles : valide, absent, expiré, réutilisé.
 - Idempotence checkout, absence de double décrément stock.
 - Les frais de livraison V2 et paiements réels ne sont pas modifiés.
+
+## Vérification Turnstile en local sans clés personnelles
+Cloudflare fournit des clés de test publiques. Avec DEBUG=True et une paire de
+clés de test officielles, l'application accepte l'absence du champ `action`
+dans la réponse Siteverify, ce qui correspond au comportement documenté.
+**En production, cette exception est désactivée et les clés de test sont interdites.**
+
+Arrêter le serveur, puis lancer depuis la racine du projet :
+```bash
+EKAKO_TURNSTILE_ENABLED=1 \
+EKAKO_TURNSTILE_SITE_KEY=1x00000000000000000000AA \
+EKAKO_TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA \
+python3 manage.py runserver 127.0.0.1:8001
+```
+Dans le navigateur, tester connexion, inscription, revendeur et commande.
+Le widget client envoie un jeton distinct à chaque tentative.
+Utiliser uniquement des données de test pour ne pas modifier les stocks réels.
+
+Pour couper le CAPTCHA local, faire Ctrl+C et redémarrer normalement :
+```bash
+python3 manage.py runserver 127.0.0.1:8001
+```
+
+Pour une vraie activation, créer un widget depuis Cloudflare Turnstile,
+renseigner les clés chez l'hébergeur, configurer le nom de domaine et tester
+le parcours réel sur un environnement de recette.

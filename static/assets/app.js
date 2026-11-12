@@ -4561,8 +4561,8 @@ async function submitRegisterFromModal(){
     return;
   }
 
-  if(password.length < 6){
-    showAuthNote("Le mot de passe doit faire au moins 6 caractères.");
+  if(password.length < 8){
+    showAuthNote("Le mot de passe doit faire au moins 8 caractères.");
     return;
   }
 
