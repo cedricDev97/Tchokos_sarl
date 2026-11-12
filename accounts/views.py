@@ -9,6 +9,9 @@ from django.views.decorators.http import require_http_methods
 from django.db import IntegrityError
 
 from .models import ResellerApplication, UserProfile
+from config.turnstile import verify_turnstile
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from .permissions import (
     is_admin,
     is_super_admin,
@@ -84,6 +87,9 @@ def login_api(request):
     if not username or not password:
         return JsonResponse({"ok": False, "error": "username/password requis"}, status=400)
 
+    protection = verify_turnstile(request, body, "login")
+    if protection is not None:
+        return protection
     user = authenticate(request, username=username, password=password)
     if not user:
         return JsonResponse({"ok": False, "error": "Identifiants invalides"}, status=401)
@@ -106,8 +112,13 @@ def register_api(request):
     if not username or not phone or not password:
         return JsonResponse({"ok": False, "error": "username, phone et password requis"}, status=400)
 
-    if len(password) < 6:
-        return JsonResponse({"ok": False, "error": "Le mot de passe doit faire au moins 6 caractères"}, status=400)
+    protection = verify_turnstile(request, body, "register")
+    if protection is not None:
+        return protection
+    try:
+        validate_password(password, user=User(username=username))
+    except ValidationError as exc:
+        return JsonResponse({"ok": False, "error": " ".join(exc.messages)}, status=400)
 
     if User.objects.filter(username__iexact=username).exists():
         return JsonResponse({"ok": False, "error": "Ce nom d'utilisateur existe déjà"}, status=400)
@@ -160,6 +171,9 @@ def reseller_apply_api(request):
     except Exception:
         body = {}
 
+    protection = verify_turnstile(request, body, "reseller")
+    if protection is not None:
+        return protection
     full_name = (body.get("full_name") or "").strip()
     phone = (body.get("phone") or "").strip()
 

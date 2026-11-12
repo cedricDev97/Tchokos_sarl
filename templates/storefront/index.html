@@ -16,7 +16,7 @@
 
 
 </head>
-<body>
+<body data-ekako-turnstile-enabled="{% if turnstile_enabled %}1{% else %}0{% endif %}" data-ekako-turnstile-sitekey="{{ turnstile_sitekey }}">
   <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
 <header>
   <div class="topbar">
@@ -1045,6 +1045,9 @@
   </section>
 </div>
 
+<div id="ekakoTurnstileContainer" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:11000;background:#fff;border-radius:12px;padding:12px;box-shadow:0 8px 32px #0003;" aria-live="polite"></div>
+{% if turnstile_enabled %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>{% endif %}
+<script src="{% static 'assets/ekako-turnstile.js' %}" defer></script>
 <script src="{% static 'assets/app.js' %}" defer></script>
 
 <script src="{% static 'assets/ekako-mobile-menu.js' %}" defer></script>

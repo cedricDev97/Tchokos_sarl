@@ -61,6 +61,7 @@ def is_reseller(user):
 
 
 from django.db import transaction, IntegrityError
+from config.turnstile import verify_turnstile
 import json
 
 @require_POST
@@ -79,6 +80,9 @@ def checkout_api(request):
     if not isinstance(payload, dict):
         return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
 
+    protection = verify_turnstile(request, {"turnstile_token": request.headers.get("X-Ekako-Turnstile", "")}, "checkout")
+    if protection is not None:
+        return protection
     customer = payload.get("customer")
     items = payload.get("items")
     if not isinstance(customer, dict):
