@@ -1887,21 +1887,34 @@ async function toggleProductActive(sku, isActive){
 }
 
   async function logout(){
-  const csrf =
-    (document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")) ||
-    (byId("csrfToken")?.value) || "";
+    const btn = byId("logoutBtn");
+    if(btn?.disabled) return;
+    const label = btn?.textContent || "🚪 Logout";
+    if(btn){
+      btn.disabled = true;
+      btn.textContent = "Déconnexion...";
+    }
 
-  try{
-    await fetch("/api/admin/logout/", {
-      method: "POST",
-      headers: { "X-CSRFToken": csrf }
-    });
-  }catch(e){}
+    try{
+      // Utiliser la même fonction que pour les autres POST :
+      // elle lit le cookie CSRF actuel, renouvelé par Django à la connexion.
+      const data = await apiPost("/api/admin/logout/", {});
+      if(!data.ok) throw new Error(data.error || "Déconnexion refusée.");
 
-  await syncRoleFromBackend();
-  renderAll();
-  goTab("shop");
-}
+      await syncRoleFromBackend();
+      await refreshResellerStatus();
+      renderAll();
+      goTab("shop");
+    }catch(err){
+      console.error("eKAKO : échec de la déconnexion", err);
+      alert(err?.error || err?.message || "Déconnexion impossible. Réessayez.");
+    }finally{
+      if(btn){
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+    }
+  }
 
 function adminSectionAllowed(section){
   if(role !== "admin"){

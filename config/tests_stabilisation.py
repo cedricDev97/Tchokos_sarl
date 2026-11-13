@@ -160,3 +160,56 @@ class CaptchaDisabledTests(SimpleTestCase):
         self.assertIsNone(
             verify_turnstile(RequestFactory().post("/"), {}, "register")
         )
+
+
+class LogoutCsrfRegressionTests(TestCase):
+    """Django renouvelle le jeton CSRF à la connexion.
+
+    Un Logout AJAX doit utiliser le cookie actuel, sans forcer un rechargement.
+    """
+
+    @override_settings(EKAKO_TURNSTILE_ENABLED=False, EKAKO_MAINTENANCE=False)
+    def test_login_rotates_csrf_and_logout_works_with_new_cookie(self):
+        from django.test import Client
+
+        get_user_model().objects.create_user(
+            username="ekako_logout_regression",
+            password="StrongPassword123!",
+        )
+        browser = Client(enforce_csrf_checks=True)
+
+        response = browser.get("/boutique/")
+        self.assertEqual(response.status_code, 200)
+        csrf_before_login = browser.cookies["csrftoken"].value
+
+        response = browser.post(
+            "/api/admin/login/",
+            json.dumps({
+                "username": "ekako_logout_regression",
+                "password": "StrongPassword123!",
+            }),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_before_login,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+
+        csrf_after_login = browser.cookies["csrftoken"].value
+        self.assertNotEqual(csrf_before_login, csrf_after_login)
+
+        # Reproduit le bug historique : l'ancien jeton n'est plus valide.
+        rejected = browser.post(
+            "/api/admin/logout/",
+            HTTP_X_CSRFTOKEN=csrf_before_login,
+        )
+        self.assertEqual(rejected.status_code, 403)
+        self.assertTrue(browser.get("/api/admin/me/").json()["authenticated"])
+
+        # Le cookie CSRF courant fonctionne sans recharger la boutique.
+        accepted = browser.post(
+            "/api/admin/logout/",
+            HTTP_X_CSRFTOKEN=csrf_after_login,
+        )
+        self.assertEqual(accepted.status_code, 200)
+        self.assertTrue(accepted.json()["ok"])
+        self.assertFalse(browser.get("/api/admin/me/").json()["authenticated"])
