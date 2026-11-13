@@ -69,3 +69,14 @@ python3 manage.py runserver 127.0.0.1:8001
 Pour une vraie activation, créer un widget depuis Cloudflare Turnstile,
 renseigner les clés chez l'hébergeur, configurer le nom de domaine et tester
 le parcours réel sur un environnement de recette.
+
+## Complément : tests isolés des commandes
+```bash
+python3 manage.py test orders.tests_checkout_stabilisation
+```
+Les tests créent une base éphémère distincte de `db.sqlite3` et simulent la
+réponse Cloudflare : aucun paiement réel, aucune modification des stocks locaux.
+Scénarios : absence/échec du CAPTCHA, mauvaise action ou origine, panne
+Cloudflare, prix et frais de livraison calculés côté serveur, nouvelle tentative
+identique sans double commande, même clé pour panier différent refusée,
+MOQ revendeur, stock insuffisant et CSRF.
