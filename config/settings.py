@@ -217,9 +217,24 @@ EKAKO_TURNSTILE_SECRET_KEY = os.environ.get("EKAKO_TURNSTILE_SECRET_KEY", "").st
 EKAKO_TURNSTILE_HOSTNAME = os.environ.get("EKAKO_TURNSTILE_HOSTNAME", "").strip().lower()
 if EKAKO_TURNSTILE_ENABLED and not (EKAKO_TURNSTILE_SITE_KEY and EKAKO_TURNSTILE_SECRET_KEY):
     raise RuntimeError("Clés Turnstile obligatoires lorsqu'il est activé")
-if IS_PRODUCTION and EKAKO_TURNSTILE_ENABLED:
+if IS_PRODUCTION:
+    # Ne jamais accepter des commandes et connexions publiques sans
+    # vérification anti-robot : configuration de production fail-closed.
+    if not EKAKO_TURNSTILE_ENABLED:
+        raise RuntimeError("EKAKO_TURNSTILE_ENABLED=1 obligatoire en production")
     if not EKAKO_TURNSTILE_HOSTNAME:
         raise RuntimeError("Définir EKAKO_TURNSTILE_HOSTNAME en production")
-    if EKAKO_TURNSTILE_SITE_KEY.startswith(("1x000000", "2x000000", "3x000000")):
+    _turnstile_test_site_keys = {
+        "1x00000000000000000000AA",
+        "2x00000000000000000000AB",
+        "3x00000000000000000000FF",
+    }
+    _turnstile_test_secret_keys = {
+        "1x0000000000000000000000000000000AA",
+        "2x0000000000000000000000000000000AA",
+        "3x0000000000000000000000000000000AA",
+    }
+    if (EKAKO_TURNSTILE_SITE_KEY in _turnstile_test_site_keys
+            or EKAKO_TURNSTILE_SECRET_KEY in _turnstile_test_secret_keys):
         raise RuntimeError("Clés de test Turnstile interdites en production")
 

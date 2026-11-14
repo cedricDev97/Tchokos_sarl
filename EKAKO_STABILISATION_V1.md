@@ -80,3 +80,38 @@ Scénarios : absence/échec du CAPTCHA, mauvaise action ou origine, panne
 Cloudflare, prix et frais de livraison calculés côté serveur, nouvelle tentative
 identique sans double commande, même clé pour panier différent refusée,
 MOQ revendeur, stock insuffisant et CSRF.
+
+## Audit de sécurité de production (15 novembre 2026)
+
+### Correction appliquée
+- En `EKAKO_ENV=production`, le démarrage échoue si Turnstile est désactivé,
+  si le hostname Turnstile est vide, ou si une clé officielle de test est fournie
+  (site ou secret). Le mode développement local reste inchangé.
+- Le serveur de production exige toujours PostgreSQL, SECRET_KEY robuste,
+  ALLOWED_HOSTS explicite et HTTPS.
+
+### Blocages restants avant ouverture publique
+1. **Anti-bruteforce** : les connexions et créations de comptes doivent
+   être limitées au moyen d'un mécanisme partagé entre processus/instances
+   (Redis ou base de données, pas un compteur Python en mémoire). CAPTCHA
+   seul ne remplace pas la limitation de débit.
+2. **Médias** : `MEDIA_ROOT` et FileSystemStorage sont locaux. Configurer
+   un volume réellement persistant ou un stockage objet avec sauvegardes,
+   plus validation et surveillance des images.
+3. **Sauvegardes** : automatiser les sauvegardes PostgreSQL chiffrées,
+   conserver des versions hors serveur et vérifier une restauration.
+4. **Déploiement** : définir un domaine HTTPS et clés Turnstile réelles,
+   contrôler le proxy et exécuter `python3 manage.py check --deploy`
+   avec les variables du serveur. Vérifier également les logs, cookies et
+   permissions sur le domaine réel.
+5. **Paiement** : ne pas annoncer de paiement en ligne réel tant que le
+   fournisseur de paiement et sa confirmation serveur (webhook signé)
+   ne sont pas intégrés et testés.
+
+### Commandes de validation locale
+```bash
+python3 manage.py check
+python3 manage.py test config.tests_stabilisation orders.tests orders.tests_checkout_stabilisation
+```
+Aucun de ces tests ne modifie `db.sqlite3` (base éphémère Django).
+Ne pas activer `EKAKO_ENV=production` sur le serveur de développement.
