@@ -4595,7 +4595,7 @@ async function renderDashboard(){
     demos.forEach((d,idx)=>{
       const shipping = computeShipping(d.city, d.quarter);
       const total = d.p.retail + shipping;
-      const orderNo = "TK" + Math.floor(100000 + Math.random()*900000);
+      const orderNo = "EKAKO" + Math.floor(10000000 + Math.random()*90000000);
       orders.unshift({
         orderNo,
         createdAt: new Date(now - idx*86400000).toISOString(),

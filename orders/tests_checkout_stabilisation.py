@@ -123,6 +123,28 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assert_untouched()
 
+    def test_legacy_tk_order_remains_trackable(self):
+        """La migration de marque ne renumérote pas les anciennes commandes."""
+        legacy = Order.objects.create(
+            order_no="TK12345678",
+            customer_name="Ancien client",
+            customer_phone="699001122",
+            city="Yaounde",
+            quarter="Bastos",
+            address="Adresse historique",
+            subtotal=12000,
+            shipping_fee=3400,
+            total=15400,
+            pay_method="MTN Mobile Money",
+        )
+        response = self.client.post(
+            reverse("track_api", kwargs={"order_no": legacy.order_no}),
+            data=json.dumps({"phone": "+237 699 00 11 22"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["order"]["orderNo"], "TK12345678")
+
     def test_valid_checkout_uses_server_prices_and_shipping(self):
         data = self.payload(qty=2)
         # Les champs envoyés par le navigateur ne doivent pas décider du tarif.
@@ -131,6 +153,7 @@ class CheckoutStabilisationTests(TestCase):
             response = self.post_order(data)
         self.assertEqual(response.status_code, 200, response.content)
         order = Order.objects.get(order_no=response.json()["orderNo"])
+        self.assertRegex(order.order_no, r"^EKAKO[0-9A-F]{8}$")
         self.assertEqual(order.mode, "retail")
         self.assertEqual(order.subtotal, 24000)
         self.assertEqual(order.shipping_fee, compute_shipping("Yaounde", "Bastos"))
@@ -275,6 +298,7 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(data["payment_status"], "unpaid")
         self.assertIsNotNone(data["reservation_expires_at"])
         order = Order.objects.get(order_no=data["orderNo"])
+        self.assertRegex(order.order_no, r"^EKAKO[0-9A-F]{8}$")
         self.assertEqual(order.pay_method, "A confirmer sur WhatsApp")
         self.assertEqual(order.payment_state, "unpaid")
         self.variant.refresh_from_db()

@@ -68,7 +68,8 @@ def is_reseller(user):
     return user.is_authenticated and user.groups.filter(name="reseller").exists()
 
 def gen_order_no():
-    return "TK" + uuid.uuid4().hex[:8].upper()
+    """Numéro public des nouvelles commandes eKAKO (anciens TK conservés)."""
+    return "EKAKO" + uuid.uuid4().hex[:8].upper()
 
 def is_reseller(user):
     return user.is_authenticated and user.groups.filter(name="reseller").exists()
