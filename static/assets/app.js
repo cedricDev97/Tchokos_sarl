@@ -193,16 +193,20 @@ async function openOrderDetail(orderNo){
 
         <div style="margin-bottom:10px;">
           <div class="orderDetailLabel">Référence paiement</div>
-          <input class="text" id="paymentRefInput" value="${o.payment_ref || ""}" placeholder="Ex: MTN-84738291">
+          <input class="text" id="paymentRefInput" value="${escapeHtml(o.payment_ref || "")}" placeholder="Ex: MTN-84738291" ${o.payment_status === "paid" ? "readonly aria-readonly='true'" : ""}>
         </div>
 
-        ${adminPermissions.payments ? `
+        ${o.payment_status === "paid" ? `
+          <div class="muted" role="status" style="padding:10px;border:1px solid #bfd9bf;border-radius:10px">
+            ✅ Paiement confirmé. Pour une correction ou un remboursement, utiliser la procédure de rapprochement plutôt que modifier directement ce statut.
+          </div>
+        ` : adminPermissions.payments ? `
           <div class="orderDetailActions">
             <button class="btn small primary" onclick="markOrderPaid('${o.orderNo}')">Marquer payé</button>
             <button class="btn small warn" onclick="markOrderPaymentPending('${o.orderNo}')">Mettre en attente</button>
             <button class="btn small danger" onclick="markOrderPaymentFailed('${o.orderNo}')">Paiement échoué</button>
           </div>
-      ` : ``}
+        ` : ``}
 
         <div class="orderDetailGrid" style="margin-top:12px;">
           <div>

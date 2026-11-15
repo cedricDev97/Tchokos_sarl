@@ -464,6 +464,82 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(order["payment_status"], "unpaid")
         self.assertEqual(order["reservation_expires_at"], created.json()["reservation_expires_at"])
 
+
+    @override_settings(
+        EKAKO_CHECKOUT_MODE="whatsapp",
+        EKAKO_WHATSAPP_NUMBER="237699001122",
+        EKAKO_WHATSAPP_RESERVATION_MINUTES=60,
+    )
+    def test_whatsapp_confirmed_payment_cannot_be_recorded_twice_or_downgraded(self):
+        """Même référence = réponse idempotente ; autre référence/état = refus."""
+        from orders.models import PaymentStatusLog
+        with self.cloudflare():
+            created = self.post_order(self.payload(), key="recette_wa_paid_replay_0001")
+        self.assertEqual(created.status_code, 200, created.content)
+        number = created.json()["orderNo"]
+        admin = get_user_model().objects.create_superuser(
+            username="ekako_test_paid_replay_admin",
+            email="paid-replay@example.test",
+            password="SafePass123!zzz",
+        )
+        self.client.force_login(admin)
+        choose_url = reverse(
+            "admin_confirm_whatsapp_payment_method_api",
+            kwargs={"order_no": number},
+        )
+        choose = self.client.post(
+            choose_url,
+            data=json.dumps({
+                "pay_method": "MTN Mobile Money",
+                "confirmed_with_customer": True,
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(choose.status_code, 200, choose.content)
+
+        payment_url = reverse(
+            "admin_update_payment_status_api",
+            kwargs={"order_no": number},
+        )
+        paid_payload = {
+            "payment_status": "paid",
+            "payment_ref": "RECETTE-MTN-12345678",
+            "verified": True,
+        }
+        paid = self.client.post(
+            payment_url, data=json.dumps(paid_payload), content_type="application/json"
+        )
+        self.assertEqual(paid.status_code, 200, paid.content)
+        order = Order.objects.get(order_no=number)
+        self.assertEqual(order.payment_state, "paid")
+        self.assertIsNone(order.reservation_expires_at)
+        self.assertIsNotNone(order.paid_at)
+        first_paid_at = order.paid_at
+        first_count = PaymentStatusLog.objects.filter(order=order).count()
+
+        replay = self.client.post(
+            payment_url, data=json.dumps(paid_payload), content_type="application/json"
+        )
+        self.assertEqual(replay.status_code, 200, replay.content)
+        order.refresh_from_db()
+        self.assertEqual(order.paid_at, first_paid_at)
+        self.assertEqual(PaymentStatusLog.objects.filter(order=order).count(), first_count)
+
+        for attempted in (
+            {"payment_status": "paid", "payment_ref": "RECETTE-MTN-OTHER", "verified": True},
+            {"payment_status": "pending", "payment_ref": "", "verified": False},
+            {"payment_status": "failed", "payment_ref": "", "verified": False},
+        ):
+            with self.subTest(attempted=attempted):
+                forbidden = self.client.post(
+                    payment_url, data=json.dumps(attempted), content_type="application/json"
+                )
+                self.assertEqual(forbidden.status_code, 409, forbidden.content)
+                order.refresh_from_db()
+                self.assertEqual(order.payment_state, "paid")
+                self.assertEqual(order.payment_reference, "RECETTE-MTN-12345678")
+                self.assertEqual(PaymentStatusLog.objects.filter(order=order).count(), first_count)
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))
