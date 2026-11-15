@@ -262,6 +262,71 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(response.status_code, 503, response.content)
         self.assert_untouched()
 
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_whatsapp_checkout_reserves_stock_and_generates_prefilled_link(self):
+        from urllib.parse import parse_qs, urlparse
+        payload = self.payload(qty=2)
+        with self.cloudflare():
+            response = self.post_order(payload, key="recette_wa_order_000000001")
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+        self.assertEqual(data["checkout_channel"], "whatsapp")
+        self.assertEqual(data["payment_status"], "unpaid")
+        self.assertIsNotNone(data["reservation_expires_at"])
+        order = Order.objects.get(order_no=data["orderNo"])
+        self.assertEqual(order.pay_method, "A confirmer sur WhatsApp")
+        self.assertEqual(order.payment_state, "unpaid")
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 5)
+        url = urlparse(data["whatsapp_url"])
+        self.assertEqual(url.netloc, "wa.me")
+        self.assertEqual(url.path, "/237699001122")
+        message = parse_qs(url.query)["text"][0]
+        self.assertIn(order.order_no, message)
+        self.assertIn("24,000 FCFA", message)
+        self.assertNotIn("699001122", message)
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_whatsapp_retry_does_not_deduct_stock_twice(self):
+        with self.cloudflare():
+            first = self.post_order(self.payload(), key="recette_wa_replay_0000001")
+            second = self.post_order(self.payload(), key="recette_wa_replay_0000001")
+        self.assertEqual(first.status_code, 200, first.content)
+        self.assertEqual(second.status_code, 200, second.content)
+        self.assertEqual(first.json()["orderNo"], second.json()["orderNo"])
+        self.assertEqual(first.json()["whatsapp_url"], second.json()["whatsapp_url"])
+        self.assertTrue(second.json()["idempotent"])
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 5)
+        self.assertEqual(Order.objects.count(), 1)
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="")
+    def test_whatsapp_missing_business_number_is_rejected(self):
+        response = self.post_order(self.payload(), key="recette_wa_no_number_000001")
+        self.assertEqual(response.status_code, 503)
+        self.assert_untouched()
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_expiration_restocks_once_and_closes_unpaid_order(self):
+        from django.utils import timezone
+        from django.core.management import call_command
+        from datetime import timedelta
+        with self.cloudflare():
+            response = self.post_order(self.payload(), key="recette_wa_expire_00000001")
+        self.assertEqual(response.status_code, 200, response.content)
+        order = Order.objects.get(order_no=response.json()["orderNo"])
+        order.reservation_expires_at = timezone.now() - timedelta(minutes=1)
+        order.save(update_fields=["reservation_expires_at"])
+        call_command("expire_whatsapp_reservations")
+        call_command("expire_whatsapp_reservations")
+        order.refresh_from_db()
+        self.variant.refresh_from_db()
+        self.assertEqual(order.status, "cancelled")
+        self.assertEqual(self.variant.stock_qty, 7)
+        replay = self.post_order(self.payload(), key="recette_wa_expire_00000001")
+        self.assertEqual(replay.status_code, 409)
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))

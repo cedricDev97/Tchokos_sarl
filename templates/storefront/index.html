@@ -620,6 +620,9 @@
                   </div>
 
                   <div><label>Adresse / details</label><input class="text" id="cAddr" placeholder="Ex: Rue, immeuble, repere..." /></div>
+                  {% if checkout_mode == "whatsapp" %}
+                  <div><label>Paiement</label><div class="hintline">Le conseiller eKAKO confirmera avec vous MTN MoMo, Orange Money ou le paiement à la livraison, selon éligibilité. Aucune transaction sur le site.</div></div>
+                  {% else %}
                   <div>
                     <label>Mode de paiement souhaité (aucun encaissement en ligne)</label>
                     <select id="cPay">
@@ -628,20 +631,24 @@
                       <option>Paiement a la livraison (optionnel)</option>
                     </select>
                   </div>
+                  {% endif %}
                 </div>
 
                 <div class="paybox">
                   {% if checkout_mode == "sandbox" %}
                   <div class="muted" role="note"><strong>Recette locale uniquement.</strong> Cette action crée une commande dans la base de données locale et décrémente les stocks. <strong>Statut : non payé.</strong> Aucun paiement MTN ou Orange Money n'est effectué. Utiliser des données de test.</div>
                   <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">🧾 Enregistrer une commande TEST (stock débité)</button>
+                  {% elif checkout_mode == "whatsapp" %}
+                  <div class="muted" role="note">Confirmez votre demande : nous réservons provisoirement les articles pendant la durée indiquée, puis vous pourrez transmettre le récapitulatif à eKAKO sur WhatsApp. <strong>Aucun paiement n'est encaissé sur ce site.</strong> Vous devez envoyer vous-même le message sur WhatsApp.</div>
+                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">📲 Confirmer et finaliser sur WhatsApp</button>
                   {% else %}
                   <div class="muted" role="status"><strong>Commandes temporairement fermées.</strong> Aucun paiement ou commande n'est accepté.</div>
                   <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn" disabled>Commandes indisponibles</button>
                   {% endif %}
 
                   <div class="success" id="successBox">
-                    ✅ Commande test enregistrée (non payée). N° commande : <strong id="orderNo"></strong><br/>
-                    Va dans Dashboard pour voir KPIs + export CSV.
+                    ✅ Demande enregistrée (non payée). N° : <strong id="orderNo"></strong><br/>
+                    Le paiement doit être confirmé avec eKAKO.
                   </div>
 
                   <button class="btn" style="width:100%;justify-content:center;margin-top:10px" id="copyOrderBtn">📋 Copier le N° de commande</button>
@@ -827,14 +834,14 @@
 <div id="checkoutSuccessModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center;">
   <div style="width:min(520px,92vw); background:#fff; border-radius:18px; padding:20px; max-height:90vh; overflow:auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-      <div style="font-weight:900; font-size:20px;">✅ Commande de test enregistrée</div>
+      <div style="font-weight:900; font-size:20px;" id="successCheckoutTitle">✅ Commande enregistrée</div>
       <button class="btn small" id="closeCheckoutSuccessBtn">✖</button>
     </div>
 
     <div class="hr"></div>
 
     <div style="display:flex; flex-direction:column; gap:10px;">
-      <div class="muted">Commande enregistrée dans la base locale. <strong>Statut de paiement : Non payé.</strong> Aucun paiement Mobile Money n'a été effectué. Les stocks ont été diminués.</div>
+      <div class="muted" id="successCheckoutDescription">Commande enregistrée. <strong>Statut : non payé.</strong> Aucun paiement automatique n'a été effectué.</div>
 
       <div class="row" style="justify-content:space-between;">
         <div class="muted">Numéro de commande</div>
@@ -846,10 +853,12 @@
         <div style="font-weight:900;" id="successOrderTotal">—</div>
       </div>
 
-      <div class="muted">Conserve ce numéro pour le suivi de ta commande.</div>
+      <div class="muted">Conserve ce numéro pour le suivi de ta demande.</div>
+      <div id="whatsappReservationNote" class="muted" style="display:none"></div>
     </div>
 
     <div class="hero-row" style="margin-top:14px;">
+      <a class="btn primary" id="sendWhatsAppOrderBtn" href="#" target="_blank" rel="noopener noreferrer" style="display:none">📲 Envoyer le récapitulatif sur WhatsApp</a>
       <button class="btn" id="copySuccessOrderBtn">📋 Copier le numéro</button>
       <button class="btn primary" id="goTrackSuccessBtn">📦 Suivre la commande</button>
     </div>

@@ -176,6 +176,21 @@ async function openOrderDetail(orderNo){
       <div class="orderDetailCard">
         <div class="orderDetailSectionTitle">Paiement</div>
 
+        ${o.checkout_channel === "whatsapp" && o.pay_method === "A confirmer sur WhatsApp" && adminPermissions.payments ? `
+          <div style="padding:10px;border:1px solid #e7c68c;border-radius:10px;margin-bottom:12px">
+            <strong>Commande WhatsApp : sélectionner le paiement convenu avec le client</strong>
+            <select id="whatsappPaymentMethod" class="select" style="width:100%;margin-top:8px">
+              <option value="MTN Mobile Money">MTN Mobile Money</option>
+              <option value="Orange Money">Orange Money</option>
+              <option value="Paiement a la livraison (optionnel)">Paiement à la livraison</option>
+            </select>
+            <button class="btn small" style="margin-top:8px" onclick="confirmWhatsAppPaymentMethod('${o.orderNo}')">Enregistrer le moyen de paiement confirmé</button>
+          </div>
+        ` : ""}
+        ${o.checkout_channel === "whatsapp" && o.reservation_expires_at ? `
+          <div class="muted">Réservation provisoire : ${new Date(o.reservation_expires_at).toLocaleString("fr-CM")}</div>
+        ` : ""}
+
         <div style="margin-bottom:10px;">
           <div class="orderDetailLabel">Référence paiement</div>
           <input class="text" id="paymentRefInput" value="${o.payment_ref || ""}" placeholder="Ex: MTN-84738291">
@@ -295,6 +310,21 @@ async function updatePaymentStatus(orderNo, payment_status, payment_ref = "", ve
     await openOrderDetail(orderNo);
   }catch(err){
     alert(err?.error || err?.message || "Erreur réseau / serveur.");
+  }
+}
+
+async function confirmWhatsAppPaymentMethod(orderNo){
+  const pay_method = byId("whatsappPaymentMethod")?.value;
+  if(!pay_method || !confirm("Le client a-t-il confirmé ce moyen de paiement sur WhatsApp ?")) return;
+  try{
+    const data = await apiPost("/api/admin/order/" + encodeURIComponent(orderNo) + "/payment-method/", {
+      pay_method, confirmed_with_customer: true
+    });
+    if(!data.ok) throw new Error(data.error || "Impossible de confirmer ce moyen de paiement.");
+    await renderDashboard();
+    await openOrderDetail(orderNo);
+  }catch(err){
+    alert(err?.error || err?.message || "Erreur réseau ou serveur.");
   }
 }
 
@@ -3165,11 +3195,35 @@ function renderResellerSummary(list){
     return {subtotal, shipping, total: subtotal+shipping};
   }
 
-  function openCheckoutSuccessModal(orderNo, total){
-  closeEkakoCartDrawer();
-  if(byId("successOrderNo")) byId("successOrderNo").textContent = orderNo || "—";
-  if(byId("successOrderTotal")) byId("successOrderTotal").textContent = money(total || 0);
-  if(byId("checkoutSuccessModal")) byId("checkoutSuccessModal").style.display = "flex";
+  function openCheckoutSuccessModal(orderNo, total, checkoutResult = {}){
+    closeEkakoCartDrawer();
+    if(byId("successOrderNo")) byId("successOrderNo").textContent = orderNo || "—";
+    if(byId("successOrderTotal")) byId("successOrderTotal").textContent = money(total || 0);
+    const whatsapp = checkoutResult.checkout_channel === "whatsapp";
+    const link = byId("sendWhatsAppOrderBtn");
+    if(link){
+      const url = checkoutResult.whatsapp_url || "";
+      // Le lien provient du serveur ; ne jamais suivre un domaine arbitraire.
+      const valid = /^https:\/\/wa\.me\/2376[0-9]{8}\?text=/.test(url);
+      link.style.display = whatsapp && valid ? "inline-flex" : "none";
+      if(valid) link.href = url;
+      else link.removeAttribute("href");
+    }
+    if(byId("successCheckoutTitle")) byId("successCheckoutTitle").textContent = whatsapp
+      ? "✅ Demande de commande enregistrée" : "✅ Commande de test enregistrée";
+    if(byId("successCheckoutDescription")) byId("successCheckoutDescription").textContent = whatsapp
+      ? "Votre demande est enregistrée, mais elle n'est pas encore payée. Cliquez sur le bouton WhatsApp puis envoyez le message pour confirmer les articles et choisir le paiement avec un conseiller."
+      : "Commande de test non payée. Aucun Mobile Money n'a été déclenché. Le stock local a été réduit.";
+    const note = byId("whatsappReservationNote");
+    if(note){
+      const expiration = checkoutResult.reservation_expires_at ? new Date(checkoutResult.reservation_expires_at) : null;
+      note.style.display = whatsapp && expiration && !isNaN(expiration.getTime()) ? "block" : "none";
+      note.textContent = expiration && !isNaN(expiration.getTime())
+        ? "Réservation provisoire jusqu'au " + expiration.toLocaleString("fr-CM")
+          + ". Passé ce délai, une demande non confirmée peut être annulée et son stock libéré."
+        : "";
+    }
+    if(byId("checkoutSuccessModal")) byId("checkoutSuccessModal").style.display = "flex";
   }
 
   function closeCheckoutSuccessModal(){
@@ -3415,7 +3469,8 @@ async function ekakoCheckoutAttempt(payload){
 }
 
 async function payNow(){
-  if(document.body.dataset.ekakoCheckoutMode !== "sandbox"){
+  const checkoutMode = document.body.dataset.ekakoCheckoutMode;
+  if(!["sandbox", "whatsapp"].includes(checkoutMode)){
     alert("Les commandes en ligne sont temporairement fermées.");
     return;
   }
@@ -3459,7 +3514,7 @@ async function payNow(){
   const payload = {
     role, mode,
     customer: { name, phone, city, quarter, address: addr },
-    pay_method: byId("cPay").value,
+    pay_method: checkoutMode === "whatsapp" ? "A confirmer sur WhatsApp" : byId("cPay").value,
     shipping_fee: shipping,
     items: cart.map(i => ({
       sku: i.sku,
@@ -3506,7 +3561,7 @@ async function payNow(){
     if(byId("orderNo")) byId("orderNo").textContent = orderNo;
     if(byId("successBox")) byId("successBox").style.display = "block";
 
-    openCheckoutSuccessModal(orderNo, finalTotal);
+    openCheckoutSuccessModal(orderNo, finalTotal, data);
 
     cart = [];
     renderCart();
@@ -3520,7 +3575,7 @@ async function payNow(){
   }catch(e){
     alert("Erreur réseau / serveur.");
   }finally{
-    if(btn){ btn.disabled = false; btn.textContent = prevText || "💳 Payer maintenant"; }
+    if(btn){ btn.disabled = false; btn.textContent = prevText || "Confirmer la commande"; }
   }
 }
 
