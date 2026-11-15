@@ -215,10 +215,26 @@ if IS_PRODUCTION:
 EKAKO_CHECKOUT_MODE = os.environ.get(
     "EKAKO_CHECKOUT_MODE", "closed" if IS_PRODUCTION else "sandbox"
 ).strip().lower()
-if EKAKO_CHECKOUT_MODE not in {"sandbox", "closed"}:
-    raise RuntimeError("EKAKO_CHECKOUT_MODE doit etre sandbox ou closed")
-if IS_PRODUCTION and EKAKO_CHECKOUT_MODE != "closed":
-    raise RuntimeError("Checkout production indisponible avant integration des paiements.")
+if EKAKO_CHECKOUT_MODE not in {"sandbox", "closed", "whatsapp"}:
+    raise RuntimeError("EKAKO_CHECKOUT_MODE doit etre sandbox, closed ou whatsapp")
+if IS_PRODUCTION and EKAKO_CHECKOUT_MODE == "sandbox":
+    raise RuntimeError("Checkout sandbox interdit en production")
+
+# Pas de numero commercial en dur dans le depot.
+import re
+EKAKO_WHATSAPP_NUMBER = re.sub(r"[^0-9]", "", os.environ.get("EKAKO_WHATSAPP_NUMBER", ""))
+if len(EKAKO_WHATSAPP_NUMBER) == 9 and EKAKO_WHATSAPP_NUMBER.startswith("6"):
+    EKAKO_WHATSAPP_NUMBER = "237" + EKAKO_WHATSAPP_NUMBER
+if EKAKO_WHATSAPP_NUMBER and not re.fullmatch(r"2376[0-9]{8}", EKAKO_WHATSAPP_NUMBER):
+    raise RuntimeError("EKAKO_WHATSAPP_NUMBER doit etre un mobile camerounais au format 2376XXXXXXXX")
+if EKAKO_CHECKOUT_MODE == "whatsapp" and not EKAKO_WHATSAPP_NUMBER:
+    raise RuntimeError("EKAKO_WHATSAPP_NUMBER est obligatoire pour activer le Checkout WhatsApp")
+EKAKO_WHATSAPP_RESERVATION_MINUTES = int(os.environ.get("EKAKO_WHATSAPP_RESERVATION_MINUTES", "60"))
+if not 15 <= EKAKO_WHATSAPP_RESERVATION_MINUTES <= 240:
+    raise RuntimeError("Reservation WhatsApp autorisee entre 15 et 240 minutes")
+if IS_PRODUCTION and EKAKO_CHECKOUT_MODE == "whatsapp":
+    if os.environ.get("EKAKO_WHATSAPP_EXPIRATION_JOB_READY", "") != "1":
+        raise RuntimeError("Configurer le cron expire_whatsapp_reservations avant l'ouverture du Checkout WhatsApp")
 
 EKAKO_MAINTENANCE = os.environ.get("EKAKO_MAINTENANCE", "0") == "1"
 EKAKO_TURNSTILE_ENABLED = os.environ.get("EKAKO_TURNSTILE_ENABLED", "0") == "1"

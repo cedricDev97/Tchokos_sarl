@@ -81,11 +81,16 @@ import json
 @require_POST
 def checkout_api(request):
     """Créer une commande et décrémenter chaque variante UNE fois, atomiquement."""
-    if getattr(settings, "IS_PRODUCTION", False) or getattr(settings, "EKAKO_CHECKOUT_MODE", "closed") != "sandbox":
+    checkout_mode = getattr(settings, "EKAKO_CHECKOUT_MODE", "closed")
+    if checkout_mode not in {"sandbox", "whatsapp"} or (
+        getattr(settings, "IS_PRODUCTION", False) and checkout_mode != "whatsapp"
+    ):
         return JsonResponse({
             "ok": False,
             "error": "Les commandes en ligne ne sont pas encore ouvertes. Aucun paiement n'a été effectué.",
         }, status=503)
+    if checkout_mode == "whatsapp" and not getattr(settings, "EKAKO_WHATSAPP_NUMBER", ""):
+        return JsonResponse({"ok": False, "error": "WhatsApp eKAKO n'est pas configuré."}, status=503)
     from django.db import OperationalError
     from django.db.models import F
 
@@ -147,12 +152,14 @@ def checkout_api(request):
         if quantities[key] > 500 or total_quantity > 2000:
             return JsonResponse({"ok": False, "error": "Quantité demandée trop élevée."}, status=400)
 
-    pay_method = payload.get("pay_method", "MTN Mobile Money")
-    if not isinstance(pay_method, str) or not pay_method.strip() or len(pay_method.strip()) > 80:
-        return JsonResponse({"ok": False, "error": "Moyen de paiement invalide."}, status=400)
-
-    if pay_method.strip() not in {"MTN Mobile Money", "Orange Money", "Paiement a la livraison (optionnel)"}:
-        return JsonResponse({"ok": False, "error": "Moyen de paiement non pris en charge."}, status=400)
+    if checkout_mode == "whatsapp":
+        pay_method = "A confirmer sur WhatsApp"
+    else:
+        pay_method = payload.get("pay_method", "MTN Mobile Money")
+        if not isinstance(pay_method, str) or not pay_method.strip() or len(pay_method.strip()) > 80:
+            return JsonResponse({"ok": False, "error": "Moyen de paiement invalide."}, status=400)
+        if pay_method.strip() not in {"MTN Mobile Money", "Orange Money", "Paiement a la livraison (optionnel)"}:
+            return JsonResponse({"ok": False, "error": "Moyen de paiement non pris en charge."}, status=400)
 
     pricing_mode = "reseller" if is_reseller(request.user) else "retail"
 
@@ -170,6 +177,7 @@ def checkout_api(request):
         "customer": clean_customer,
         "items": sorted([[sku, size, qty] for (sku, size), qty in quantities.items()]),
         "pay_method": pay_method.strip(),
+        "checkout_channel": checkout_mode,
         "mode": pricing_mode,
         "user_id": request.user.pk if request.user.is_authenticated else None,
     }
@@ -197,11 +205,9 @@ def checkout_api(request):
                     return JsonResponse({
                         "ok": False, "error": "Commande en cours de confirmation. Réessaie."
                     }, status=503)
-                return JsonResponse({
-                    "ok": True, "orderNo": previous.order.order_no,
-                    "mode": previous.order.mode, "idempotent": True,
-                    "payment_status": previous.order.payment_state,
-                })
+                if previous.order.status in {"cancelled", "failed"}:
+                    return JsonResponse({"ok": False, "error": "Cette demande est expirée ou annulée. Crée une nouvelle commande."}, status=409)
+                return checkout_response(previous.order, idempotent=True)
 
             order_lines = []
             sku_totals = {}
@@ -262,6 +268,11 @@ def checkout_api(request):
                             quarter=clean_customer["quarter"],
                             address=clean_customer["address"],
                             pay_method=pay_method.strip(),
+                            checkout_channel="whatsapp" if checkout_mode == "whatsapp" else "web",
+                            reservation_expires_at=(
+                                timezone.now() + timedelta(minutes=settings.EKAKO_WHATSAPP_RESERVATION_MINUTES)
+                                if checkout_mode == "whatsapp" else None
+                            ),
                             shipping_fee=shipping_fee,
                             subtotal=subtotal,
                             total=subtotal + shipping_fee,
@@ -318,10 +329,48 @@ def checkout_api(request):
     except OperationalError:
         return JsonResponse({"ok": False, "error": "Stock momentanément occupé. Réessaie."}, status=503)
 
-    return JsonResponse({
-        "ok": True, "orderNo": order.order_no,
-        "mode": pricing_mode, "payment_status": order.payment_state,
-    })
+    return checkout_response(order)
+
+
+def checkout_response(order, idempotent=False):
+    """Recapitulatif serveur, a partager volontairement par le client."""
+    data = {
+        "ok": True, "orderNo": order.order_no, "mode": order.mode,
+        "payment_status": order.payment_state, "idempotent": idempotent,
+        "checkout_channel": order.checkout_channel,
+    }
+    if order.checkout_channel == "whatsapp":
+        if order.reservation_expires_at and order.reservation_expires_at <= timezone.now():
+            return JsonResponse({"ok": False, "error": "Réservation expirée. Crée une nouvelle commande."}, status=409)
+        from urllib.parse import urlencode
+        lines = [
+            "Bonjour eKAKO, je souhaite finaliser ma commande.",
+            f"Commande : {order.order_no}", f"Client : {order.customer_name}",
+            "", "Articles :",
+        ]
+        for item in order.items.all():
+            color = f" / {item.color_name}" if item.color_name else ""
+            lines.append(
+                f"- {item.product_name}{color} / {item.size_value} : "
+                f"{item.qty} x {item.unit_price:,} = {item.line_total:,} FCFA"
+            )
+        lines += [
+            "", f"Sous-total : {order.subtotal:,} FCFA",
+            f"Livraison : {order.shipping_fee:,} FCFA",
+            f"TOTAL : {order.total:,} FCFA",
+            f"Destination : {order.city} / {order.quarter}",
+            "Paiement : à convenir avec eKAKO (MTN MoMo, Orange Money ou livraison si autorisée).",
+            "Merci de confirmer la disponibilité et le moyen de paiement.",
+        ]
+        data["whatsapp_url"] = (
+            "https://wa.me/" + settings.EKAKO_WHATSAPP_NUMBER
+            + "?" + urlencode({"text": "\n".join(lines)})
+        )
+        data["reservation_expires_at"] = (
+            order.reservation_expires_at.isoformat() if order.reservation_expires_at else None
+        )
+    return JsonResponse(data)
+
 
 # EKAKO_COMMANDES_SECURITE_V1 : second facteur de vérification du suivi client.
 @require_POST
@@ -361,6 +410,9 @@ def track_api(request, order_no: str):
             "orderNo": o.order_no,
             "status": o.status,
             "payment_status": o.payment_state,
+            "pay_method": o.pay_method,
+            "checkout_channel": o.checkout_channel,
+            "reservation_expires_at": o.reservation_expires_at.isoformat() if o.reservation_expires_at else None,
             "createdAt": o.created_at.isoformat(),
             "customer": {
                 "name": o.customer_name,
@@ -427,6 +479,7 @@ def admin_orders_api(request):
                 "total": o.total,
                 "pay_method": o.pay_method,
                 "payment_status": getattr(o, "payment_state", "unpaid"),
+                "checkout_channel": o.checkout_channel,
                 "payment_ref": getattr(o, "payment_reference", ""),
             }
             for o in qs
@@ -854,6 +907,45 @@ def admin_cod_collect_api(request, order_no: str):
     return JsonResponse({"ok": True, "orderNo": order.order_no,
                          "reference": reference, "amount": amount})
 
+@user_passes_test(can_manage_payments)
+@require_POST
+def admin_confirm_whatsapp_payment_method_api(request, order_no: str):
+    """Choix du paiement confirme avec le client via WhatsApp (pas un encaissement)."""
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+    method = payload.get("pay_method")
+    if method not in {"MTN Mobile Money", "Orange Money", "Paiement a la livraison (optionnel)"}:
+        return JsonResponse({"ok": False, "error": "Moyen de paiement non autorisé."}, status=400)
+    if payload.get("confirmed_with_customer") is not True:
+        return JsonResponse({"ok": False, "error": "Confirmation explicite du client requise."}, status=400)
+    with transaction.atomic():
+        order = Order.objects.select_for_update().filter(order_no__iexact=order_no.strip()).first()
+        if not order:
+            return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+        if order.checkout_channel != "whatsapp" or order.status != "received" or order.payment_state == "paid":
+            return JsonResponse({"ok": False, "error": "Moyen de paiement non modifiable à cette étape."}, status=409)
+        if order.reservation_expires_at and order.reservation_expires_at <= timezone.now():
+            return JsonResponse({"ok": False, "error": "Réservation expirée. Crée une nouvelle commande."}, status=409)
+        if order.pay_method == method:
+            return JsonResponse({"ok": True, "pay_method": method, "idempotent": True})
+        old_method = order.pay_method
+        order.pay_method = method
+        # COD : le client a confirmé sa commande à un conseiller.
+        if is_cod_payment_method(method):
+            order.reservation_expires_at = None
+        order.save(update_fields=["pay_method", "reservation_expires_at"])
+        PaymentStatusLog.objects.create(
+            order=order, old_state=order.payment_state, new_state=order.payment_state,
+            note=f"Choix de paiement confirmé sur WhatsApp : {old_method} -> {method}",
+            changed_by=request.user,
+        )
+    return JsonResponse({"ok": True, "pay_method": method})
+
+
 ALLOWED_PAYMENT_STATUSES = {"unpaid", "pending", "paid", "failed"}
 
 @user_passes_test(can_manage_payments)
@@ -896,6 +988,12 @@ def admin_update_payment_status_api(request, order_no: str):
             except Order.DoesNotExist:
                 return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
 
+            if (new_status == "paid" and order.checkout_channel == "whatsapp"
+                    and order.reservation_expires_at
+                    and order.reservation_expires_at <= timezone.now()):
+                return JsonResponse({"ok": False, "error": "Réservation expirée : traiter le paiement avec un conseiller."}, status=409)
+            if new_status == "paid" and order.pay_method == "A confirmer sur WhatsApp":
+                return JsonResponse({"ok": False, "error": "Confirme d'abord le moyen de paiement convenu sur WhatsApp."}, status=409)
             old_state = order.payment_state
             old_reference = order.payment_reference or ""
             cod_receipt = None
@@ -956,6 +1054,8 @@ def admin_update_payment_status_api(request, order_no: str):
                 order=order, old_state=old_state, new_state=new_status,
                 reference=payment_ref, note=note.strip(), changed_by=request.user,
             )
+            if new_status == "paid" and order.checkout_channel == "whatsapp":
+                Order.objects.filter(pk=order.pk).update(reservation_expires_at=None)
             if new_status == "paid" and cod_receipt is not None:
                 CODCollection.objects.filter(pk=cod_receipt.pk, verified_at__isnull=True).update(
                     verified_at=timezone.now(), verified_by=request.user,
@@ -1043,6 +1143,8 @@ def reseller_order_detail_api(request, order_no: str):
             "quarter": o.quarter,
             "address": o.address,
             "pay_method": getattr(o, "pay_method", ""),
+            "checkout_channel": o.checkout_channel,
+            "reservation_expires_at": o.reservation_expires_at.isoformat() if o.reservation_expires_at else None,
             "payment_status": getattr(o, "payment_state", "unpaid"),
             "payment_ref": getattr(o, "payment_reference", ""),
             "paid_at": o.paid_at.isoformat() if getattr(o, "paid_at", None) else None,

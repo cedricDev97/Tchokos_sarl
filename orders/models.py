@@ -31,6 +31,9 @@ class Order(models.Model):
 
     pay_method = models.CharField(max_length=80, default="MTN Mobile Money")
 
+    checkout_channel = models.CharField(max_length=20, choices=[("web", "Site"), ("whatsapp", "WhatsApp")], default="web", db_index=True)
+    reservation_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
     payment_state = models.CharField(max_length=20, choices=PAYMENT_STATES, default="unpaid")
     payment_reference = models.CharField(max_length=120, blank=True, default="")
     paid_at = models.DateTimeField(null=True, blank=True)

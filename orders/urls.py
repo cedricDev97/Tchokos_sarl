@@ -21,6 +21,7 @@ urlpatterns = [
     path("admin/order/<str:order_no>/", views.admin_order_detail_api, name="admin_order_detail_api"),
     path("admin/order/<str:order_no>/status/", admin_update_status_api, name="admin_update_status_api"),
     path("admin/order/<str:order_no>/payment-status/", views.admin_update_payment_status_api, name="admin_update_payment_status_api"),
+    path("admin/order/<str:order_no>/payment-method/", views.admin_confirm_whatsapp_payment_method_api, name="admin_confirm_whatsapp_payment_method_api"),
     path("admin/orders/<str:order_no>/timeline/", views.admin_order_timeline_api, name="admin_order_timeline_api"),
 
     path("admin/analytics/", admin_analytics_api, name="admin_analytics_api"),
