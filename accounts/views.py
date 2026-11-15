@@ -87,13 +87,30 @@ def login_api(request):
     if not username or not password:
         return JsonResponse({"ok": False, "error": "username/password requis"}, status=400)
 
+    from .login_throttle import (
+        login_retry_after, record_failed_login, clear_successful_login,
+    )
+
+    retry_after = login_retry_after(request, username)
+    if retry_after:
+        response = JsonResponse({
+            "ok": False,
+            "error": "Trop de tentatives de connexion. Réessayez dans quelques minutes.",
+            "retry_after": retry_after,
+        }, status=429)
+        response["Retry-After"] = str(retry_after)
+        response["Cache-Control"] = "no-store"
+        return response
+
     protection = verify_turnstile(request, body, "login")
     if protection is not None:
         return protection
     user = authenticate(request, username=username, password=password)
     if not user:
+        record_failed_login(request, username)
         return JsonResponse({"ok": False, "error": "Identifiants invalides"}, status=401)
 
+    clear_successful_login(request, username)
     login(request, user)
     return JsonResponse({"ok": True, "role": get_role(user), "username": user.username})
 

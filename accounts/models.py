@@ -33,3 +33,16 @@ class UserProfile(models.Model):
         return f"{self.user.username} profile"
 
 # Create your models here.
+
+
+class LoginAttemptCounter(models.Model):
+    """Compteur anti-bruteforce partagé entre processus via la base Django.
+
+    La clé est un HMAC (identifiant+IP ou IP) ; aucun identifiant/IP en clair.
+    """
+    key = models.CharField(max_length=64, primary_key=True)
+    failures = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField(db_index=True)
+
+    def __str__(self):
+        return f"LoginAttemptCounter({self.key[:8]}…, failures={self.failures})"

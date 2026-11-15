@@ -115,3 +115,23 @@ python3 manage.py test config.tests_stabilisation orders.tests orders.tests_chec
 ```
 Aucun de ces tests ne modifie `db.sqlite3` (base éphémère Django).
 Ne pas activer `EKAKO_ENV=production` sur le serveur de développement.
+
+## Protection des connexions : V1 anti-bruteforce
+
+- Endpoint couvert : `POST /api/admin/login/` (clients, revendeurs et
+  administrateurs utilisant le Dashboard eKAKO).
+- 5 mots de passe erronés pour la même paire IP/identifiant dans une fenêtre
+  de 15 minutes : demandes suivantes rejetées avec HTTP 429 et Retry-After.
+- 20 mots de passe erronés depuis la même IP, même avec des noms différents :
+  blocage temporaire de cette IP. Les réussites effacent uniquement le compteur
+  de la paire afin de limiter les blocages abusifs de comptes tiers.
+- Les compteurs sont conservés dans la base Django et partagés entre workers ;
+  les clés sont calculées par HMAC, sans stocker IP/username en clair.
+- **Production** : PostgreSQL requis (sélection/verrouillage ligne). L'IP
+  vient de REMOTE_ADDR : configurer le reverse proxy de façon fiable.
+- **Couverture restante** : `/admin/login/` de Django est une interface
+  distincte ; la protéger au niveau proxy/WAF ou intégrer un contrôle dédié
+  avant ouverture publique. CAPTCHA ne remplace pas ce contrôle.
+- La base devra être migrée une fois sur le Mac après sauvegarde :
+  `python3 manage.py migrate`.
+- Les tests sont isolés : `python3 manage.py test accounts.tests_login_throttle`.
