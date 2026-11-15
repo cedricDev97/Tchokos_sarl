@@ -4,7 +4,7 @@ import re
 from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.http import JsonResponse
 from .models import Order
 from django.contrib.auth import authenticate, login, logout
@@ -1262,3 +1262,63 @@ def reseller_top_products_api(request):
     })
 
 # Create your views here.
+
+
+@user_passes_test(can_manage_payments)
+@require_http_methods(["GET", "POST"])
+def admin_order_finance_api(request, order_no: str):
+    """Lecture ou saisie auditée des dépenses variables. Jamais un encaissement."""
+    from .models import OrderCostSheet, OrderCostRevision
+    from .finance import COST_FIELDS, order_finance_summary
+
+    if request.method == "GET":
+        try:
+            order = Order.objects.get(order_no__iexact=(order_no or "").strip())
+        except Order.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+        return JsonResponse({"ok": True, "finance": order_finance_summary(order)})
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "JSON invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+    values = {}
+    for key in COST_FIELDS:
+        raw = payload.get(key)
+        if type(raw) is not int or not (0 <= raw <= 100000000):
+            return JsonResponse({
+                "ok": False, "error": f"{key} : montant entier FCFA de 0 à 100 000 000 obligatoire."
+            }, status=400)
+        values[key] = raw
+    reason = payload.get("reason")
+    if not isinstance(reason, str) or not (4 <= len(reason.strip()) <= 255):
+        return JsonResponse({
+            "ok": False, "error": "Motif de saisie ou correction obligatoire (4 à 255 caractères)."
+        }, status=400)
+
+    with transaction.atomic():
+        try:
+            order = Order.objects.select_for_update().get(order_no__iexact=(order_no or "").strip())
+        except Order.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+        sheet = OrderCostSheet.objects.select_for_update().filter(order=order).first()
+        previous = {
+            key: getattr(sheet, key) if sheet is not None else None
+            for key in COST_FIELDS
+        }
+        if previous != values:
+            if sheet is None:
+                OrderCostSheet.objects.create(order=order, updated_by=request.user, **values)
+            else:
+                for key, amount in values.items():
+                    setattr(sheet, key, amount)
+                sheet.updated_by = request.user
+                sheet.save(update_fields=[*COST_FIELDS, "updated_by", "updated_at"])
+            OrderCostRevision.objects.create(
+                order=order, previous_values=previous, new_values=values,
+                reason=reason.strip(), changed_by=request.user,
+            )
+        result = order_finance_summary(order)
+    return JsonResponse({"ok": True, "finance": result})

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CODCollection
+from .models import CODCollection, OrderCostSheet, OrderCostRevision
 
 # Register your models here.
 
@@ -17,6 +17,38 @@ class CODCollectionAdmin(admin.ModelAdmin):
         "order", "amount", "reference", "courier_name", "note", "collected_at",
         "recorded_by", "verified_at", "verified_by",
     )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(OrderCostSheet)
+class OrderCostSheetAdmin(admin.ModelAdmin):
+    list_display = ("order", "courier_cost", "payment_fee", "other_cost", "updated_by", "updated_at")
+    search_fields = ("order__order_no",)
+    readonly_fields = ("order", "courier_cost", "payment_fee", "other_cost", "updated_by", "updated_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(OrderCostRevision)
+class OrderCostRevisionAdmin(admin.ModelAdmin):
+    list_display = ("order", "reason", "changed_by", "created_at")
+    search_fields = ("order__order_no", "reason")
+    readonly_fields = ("order", "previous_values", "new_values", "reason", "changed_by", "created_at")
 
     def has_add_permission(self, request):
         return False

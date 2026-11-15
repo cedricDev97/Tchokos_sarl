@@ -150,3 +150,25 @@ class PaymentStatusLog(models.Model):
         ordering = ["-created_at"]
 
 # Create your models here.
+
+class OrderCostSheet(models.Model):
+    """Coûts variables explicites d'une commande. None ne vaut jamais zéro."""
+    order = models.OneToOneField("orders.Order", related_name="cost_sheet", on_delete=models.PROTECT)
+    courier_cost = models.PositiveIntegerField("Coût livreur FCFA", null=True, blank=True)
+    payment_fee = models.PositiveIntegerField("Frais encaissement FCFA", null=True, blank=True)
+    other_cost = models.PositiveIntegerField("Autres coûts variables FCFA", null=True, blank=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class OrderCostRevision(models.Model):
+    """Historique non modifiable des corrections de frais par commande."""
+    order = models.ForeignKey("orders.Order", related_name="cost_revisions", on_delete=models.PROTECT)
+    previous_values = models.JSONField(default=dict)
+    new_values = models.JSONField(default=dict)
+    reason = models.CharField(max_length=255)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
