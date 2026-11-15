@@ -3644,6 +3644,13 @@ async function renderTrackingFromApi(orderNo){
         </div>
       </div>
 
+      ${o.whatsapp_url && /^https:\/\/wa\.me\/2376[0-9]{8}\?text=/.test(o.whatsapp_url) ? `
+        <div style="margin:12px 0">
+          <a class="btn primary" href="${escapeHtml(o.whatsapp_url)}" target="_blank" rel="noopener noreferrer">
+            📲 Reprendre la finalisation sur WhatsApp
+          </a>
+        </div>` : ""}
+
       <div class="hr"></div>
 
       <div class="muted">${escapeHtml(o.customer.name || "")}</div>

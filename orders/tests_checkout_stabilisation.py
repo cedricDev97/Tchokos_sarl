@@ -327,6 +327,27 @@ class CheckoutStabilisationTests(TestCase):
         replay = self.post_order(self.payload(), key="recette_wa_expire_00000001")
         self.assertEqual(replay.status_code, 409)
 
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_tracking_recovers_whatsapp_link_after_page_closed(self):
+        with self.cloudflare():
+            response = self.post_order(self.payload(), key="recette_wa_track_recover_001")
+        self.assertEqual(response.status_code, 200, response.content)
+        order_no = response.json()["orderNo"]
+        recovered = self.client.post(
+            reverse("track_api", kwargs={"order_no": order_no}),
+            data=json.dumps({"phone": "+237 699 00 11 22"}),
+            content_type="application/json",
+        )
+        self.assertEqual(recovered.status_code, 200, recovered.content)
+        self.assertEqual(recovered.json()["order"]["whatsapp_url"], response.json()["whatsapp_url"])
+        wrong_phone = self.client.post(
+            reverse("track_api", kwargs={"order_no": order_no}),
+            data=json.dumps({"phone": "699111222"}),
+            content_type="application/json",
+        )
+        self.assertEqual(wrong_phone.status_code, 404)
+        self.assertNotIn("whatsapp_url", wrong_phone.json())
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))

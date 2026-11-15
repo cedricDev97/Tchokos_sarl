@@ -404,9 +404,20 @@ def track_api(request, order_no: str):
     if not valid:
         return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
 
+    whatsapp_url = None
+    if (o.checkout_channel == "whatsapp" and o.status == "received"
+            and o.payment_state != "paid" and o.reservation_expires_at
+            and o.reservation_expires_at > timezone.now()
+            and getattr(settings, "EKAKO_WHATSAPP_NUMBER", "")):
+        # Le client est authentifié pour ce suivi par numéro de commande + téléphone.
+        whatsapp_response = checkout_response(o)
+        if whatsapp_response.status_code == 200:
+            whatsapp_url = json.loads(whatsapp_response.content).get("whatsapp_url")
+
     return JsonResponse({
         "ok": True,
         "order": {
+            "whatsapp_url": whatsapp_url,
             "orderNo": o.order_no,
             "status": o.status,
             "payment_status": o.payment_state,
