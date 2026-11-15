@@ -1018,11 +1018,17 @@ function buildPacksFromProducts() {
 
       if (useSizes.length) {
         let left = moq;
-        let i = 0;
-        while (left > 0) {
-          dist[useSizes[i % useSizes.length]] += 1;
-          left--;
-          i++;
+        while(left > 0){
+          let allocated = false;
+          for(const size of useSizes){
+            if(dist[size] < stockOf(sku,size)){
+              dist[size] += 1;
+              left -= 1;
+              allocated = true;
+              if(left === 0) break;
+            }
+          }
+          if(!allocated) break;
         }
       }
 
@@ -2081,6 +2087,16 @@ function syncRoleUI(){
   return Object.values(sizes).reduce((a,b)=>a+Number(b||0),0);
 }
 
+  function cartQtyForVariant(sku,size){
+    const normalized = normalizeVariantValue(size);
+    return cart.reduce((sum,item)=>
+      sum + (item.sku === sku && normalizeVariantValue(item.size) === normalized ? Number(item.qty) || 0 : 0),0);
+  }
+
+  function remainingStockForCart(sku,size){
+    return Math.max(0,stockOf(sku,size)-cartQtyForVariant(sku,size));
+  }
+
   function adjustStock(sku, size, delta){
   const key = normalizeVariantValue(size);
   stockMap[sku] = stockMap[sku] || {};
@@ -2878,9 +2894,13 @@ function renderResellerSummary(list){
     const variants = Array.isArray(p.sizes) ? p.sizes : [];
     const variantLabel = getVariantLabel(p);
     const minQty = mode === "reseller" ? Math.max(1, Number(p.moq) || 1) : 1;
-    const firstIndex = Math.max(0, variants.findIndex(s=>stockOf(p.id,s) >= minQty));
+    const firstEnough = variants.findIndex(s => remainingStockForCart(p.id,s) >= minQty);
+    const firstAvailable = variants.findIndex(s => remainingStockForCart(p.id,s) > 0);
+    const firstIndex = Math.max(0, firstEnough >= 0 ? firstEnough : firstAvailable);
     const selected = variants[firstIndex] || "";
-    const initialStock = selected ? stockOf(p.id,selected) : 0;
+    const initialStock = selected ? remainingStockForCart(p.id,selected) : 0;
+    const initialQty = initialStock > 0 ? Math.min(minQty,initialStock) : 1;
+    const skuCanReachMoq = mode !== "reseller" || totalStockOfSku(p.id) >= minQty;
     const label = v => escapeHtml(formatVariantValue(p,v));
     // eKAKO_GALERIE_V1 — photographie principale puis vues secondaires
     const photos = [
@@ -2902,7 +2922,7 @@ function renderResellerSummary(list){
         </div>` : "";
     const title = escapeHtml(p.name || "Produit eKAKO");
     const price = Number(priceOf(p)) || 0;
-    const stockText = initialStock <= 0 ? "Rupture de stock" : initialStock < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${initialStock} unité(s) disponible(s)`;
+    const stockText = initialStock <= 0 ? "Rupture de stock" : `${initialStock} unité(s) encore disponible(s) pour cette taille`;
 
     // EKAKO_COULEURS_V1 — regroupement par référence, pas par photo de galerie.
     const colorVariants = p.style_group && p.color_name
@@ -2949,30 +2969,30 @@ function renderResellerSummary(list){
             <div class="ekako-pdp-field-title">Choisir ${escapeHtml(variantLabel.toLowerCase())}</div>
             <div class="ekako-pdp-variants" role="group" aria-label="${escapeHtml(variantLabel)}">
               ${variants.map((s,i)=>{
-                const available = stockOf(p.id,s);
+                const available = remainingStockForCart(p.id,s);
                 const active = i === firstIndex;
-                return `<button type="button" data-pdp-variant="${i}" class="ekako-pdp-variant ${active ? "is-active" : ""}" aria-pressed="${active ? "true" : "false"}" ${available < minQty ? "disabled" : ""} title="${available} en stock">${label(s)}</button>`;
+                return `<button type="button" data-pdp-variant="${i}" class="ekako-pdp-variant ${active ? "is-active" : ""}" aria-pressed="${active ? "true" : "false"}" ${available <= 0 ? "disabled" : ""} title="${available} restant(s) pour cette taille">${label(s)}</button>`;
               }).join("") || `<span class="ekako-pdp-field-hint">Aucune variante disponible</span>`}
             </div>
             <select id="pdSize" class="ekako-pdp-native-select" tabindex="-1" aria-hidden="true">
               ${variants.map((s,i)=>`<option value="${escapeHtml(s)}" ${i===firstIndex ? "selected" : ""}>${label(s)}</option>`).join("")}
             </select>
-            <div class="ekako-pdp-stock ${initialStock < minQty ? "is-empty" : ""}" id="pdSelectedStock" aria-live="polite">
+            <div class="ekako-pdp-stock ${initialStock <= 0 || !skuCanReachMoq ? "is-empty" : ""}" id="pdSelectedStock" aria-live="polite">
               <span class="ekako-pdp-dot"></span><span>${stockText}</span>
             </div>
-            ${mode === "reseller" ? `<div class="ekako-pdp-field-hint">Commande minimum revendeur : ${minQty} unité(s)</div>` : ""}
+            ${mode === "reseller" ? `<div class="ekako-pdp-field-hint">Commande minimum : ${minQty} pièces pour cette couleur (réf. ${escapeHtml(p.id)}), toutes tailles cumulées. Stock total de la couleur : ${totalStockOfSku(p.id)} pièce(s).${skuCanReachMoq ? " Vous pouvez compléter le minimum en ajoutant plusieurs tailles au panier." : " Stock total insuffisant pour atteindre le minimum revendeur."}</div>` : ""}
           </div>
 
           <div class="ekako-pdp-quantity-row">
             <span class="ekako-pdp-field-title" style="margin:0">Quantité</span>
             <div class="ekako-pdp-stepper">
               <button type="button" id="pdQtyMinus" aria-label="Diminuer la quantité">−</button>
-              <input id="pdQty" type="number" inputmode="numeric" min="${minQty}" max="${Math.max(0,initialStock)}" value="${minQty}" aria-label="Quantité">
+              <input id="pdQty" type="number" inputmode="numeric" min="1" max="${Math.max(0,initialStock)}" value="${initialQty}" aria-label="Quantité">
               <button type="button" id="pdQtyPlus" aria-label="Augmenter la quantité">+</button>
             </div>
           </div>
-          <div class="ekako-pdp-subtotal"><span>Sous-total des articles</span><strong id="pdSubtotal">${money(price * minQty)}</strong></div>
-          <button type="button" id="pdAddBtn" ${initialStock < minQty ? "disabled" : ""}>🛒 &nbsp; Ajouter au panier</button>
+          <div class="ekako-pdp-subtotal"><span>Sous-total des articles</span><strong id="pdSubtotal">${money(price * initialQty)}</strong></div>
+          <button type="button" id="pdAddBtn" ${initialStock <= 0 || !skuCanReachMoq ? "disabled" : ""}>🛒 &nbsp; Ajouter au panier</button>
           <div class="ekako-pdp-shipping"><span aria-hidden="true">↗</span><span>Les frais de livraison sont calculés selon la ville et le quartier lors de la commande.</span></div>
           <div class="ekako-pdp-desc"><h3>À propos de ce produit</h3>${renderProductDescription(p.desc)}</div>
         </div>
@@ -3005,22 +3025,24 @@ function renderResellerSummary(list){
     function updatePurchase(){
       const size = normalizeVariantValue(byId("pdSize")?.value);
       const qtyInput = byId("pdQty");
-      const max = size ? stockOf(p.id,size) : 0;
+      const max = size ? remainingStockForCart(p.id,size) : 0;
       let qty = Number.parseInt(qtyInput?.value,10);
-      if(!Number.isFinite(qty) || qty < minQty) qty = minQty;
-      if(qty > max && max >= minQty) qty = max;
+      if(!Number.isInteger(qty) || qty < 1) qty = 1;
+      if(max > 0 && qty > max) qty = max;
       qtyInput.value = String(qty);
       qtyInput.max = String(max);
       byId("pdSubtotal").textContent = money(price * qty);
-      const allowed = max >= minQty && qty <= max;
+      const allowed = max > 0 && qty <= max && skuCanReachMoq;
       const add = byId("pdAddBtn");
       add.disabled = !allowed;
       add.textContent = allowed ? "🛒  Ajouter au panier" : "Indisponible pour cette quantité";
-      byId("pdQtyMinus").disabled = qty <= minQty || !allowed;
+      byId("pdQtyMinus").disabled = qty <= 1 || !allowed;
       byId("pdQtyPlus").disabled = qty >= max || !allowed;
       const line = byId("pdSelectedStock");
-      line.classList.toggle("is-empty", max < minQty);
-      line.lastElementChild.textContent = max <= 0 ? "Rupture de stock" : max < minQty ? `Stock insuffisant pour ${minQty} unité(s)` : `${max} unité(s) disponible(s)`;
+      line.classList.toggle("is-empty", max <= 0 || !skuCanReachMoq);
+      line.lastElementChild.textContent = !skuCanReachMoq
+        ? `Stock total de la couleur insuffisant pour le MOQ de ${minQty}`
+        : max <= 0 ? "Rupture de stock" : `${max} unité(s) restante(s) pour cette taille`;
     }
 
     // EKAKO_COULEURS_V1 — choisir un autre SKU actualise photo, prix, tailles et stock.
@@ -3032,9 +3054,8 @@ function renderResellerSummary(list){
         selectedProductId = nextSku;
         renderProductDetail();
         const nextProduct = getProduct(nextSku);
-        const nextMinQty = mode === "reseller" ? Math.max(1, Number(nextProduct.moq) || 1) : 1;
         const index = (nextProduct.sizes || []).findIndex(s =>
-          String(s) === String(previousSize) && stockOf(nextSku,s) >= nextMinQty);
+          String(s) === String(previousSize) && remainingStockForCart(nextSku,s) > 0);
         if(index >= 0){
           byId("productDetailMount")?.querySelector(`[data-pdp-variant="${index}"]`)?.click();
         }
@@ -3048,7 +3069,8 @@ function renderResellerSummary(list){
         const idx = Number(btn.dataset.pdpVariant);
         if(!Number.isInteger(idx) || idx < 0 || idx >= variants.length) return;
         byId("pdSize").value = String(variants[idx]);
-        byId("pdQty").value = String(minQty);
+        const remaining = remainingStockForCart(p.id,variants[idx]);
+        byId("pdQty").value = String(Math.max(1,Math.min(minQty,remaining)));
         mount.querySelectorAll("[data-pdp-variant]").forEach(item=>{
           const chosen = item === btn;
           item.classList.toggle("is-active",chosen);
@@ -3070,11 +3092,10 @@ function renderResellerSummary(list){
     byId("pdAddBtn")?.addEventListener("click",()=>{
       const size = normalizeVariantValue(byId("pdSize")?.value);
       const qty = Number.parseInt(byId("pdQty")?.value,10);
-      if(!Number.isInteger(qty) || qty < minQty){alert(`Quantité minimale : ${minQty}`);return;}
-      const result = validateStock(p.id,size,qty);
-      if(!result.ok){alert(result.msg);return;}
-      closeEkakoProductModal();
-      addToCart(p.id,size,qty,"PRODUCT");
+      if(!Number.isInteger(qty) || qty < 1){alert("Quantité invalide.");return;}
+      if(!skuCanReachMoq){alert(`Stock de cette couleur insuffisant pour le MOQ de ${minQty}.`);return;}
+      if(qty > remainingStockForCart(p.id,size)){alert("Quantité supérieure au stock restant pour cette taille.");return;}
+      if(addToCart(p.id,size,qty,"PRODUCT")) closeEkakoProductModal();
     });
     updatePurchase();
   }
@@ -3086,33 +3107,37 @@ function renderResellerSummary(list){
     return;
   }
 
-  const size = normalizeVariantValue(p.sizes[Math.floor(p.sizes.length / 2)]);
-  const qty = (mode === "reseller" ? p.moq : 1);
-
-  const v = validateStock(sku, size, qty);
-  if(!v.ok){ alert(v.msg); return; }
-
-  addToCart(sku, size, qty, "QUICK");
+  if(mode === "reseller"){
+    // Plusieurs tailles peuvent composer le MOQ : ne pas choisir une taille au hasard.
+    showProductDetail(sku);
+    return;
+  }
+  const available = p.sizes.find(s => remainingStockForCart(sku,s) > 0);
+  if(!available){ alert("Toutes les variantes sont épuisées."); return; }
+  addToCart(sku, normalizeVariantValue(available), 1, "QUICK");
 }
 
   function addToCart(sku, size, qty, source){
-  const option = normalizeVariantValue(size);
-  const key = `${sku}__${option}__${source}`;
-  const existing = cart.find(x => `${x.sku}__${x.size}__${x.source}` === key);
-
-  if(existing) existing.qty += qty;
-  else cart.push({sku, size: option, qty, source});
-
-  renderCart();
-  openEkakoCartDrawer();
-}
+    const option = normalizeVariantValue(size);
+    if(!Number.isInteger(qty) || qty <= 0 || qty > remainingStockForCart(sku,option)){
+      alert(`Stock insuffisant pour ${sku}, ${option}. Restant : ${remainingStockForCart(sku,option)}.`);
+      return false;
+    }
+    const key = `${sku}__${option}__${source}`;
+    const existing = cart.find(x => `${x.sku}__${x.size}__${x.source}` === key);
+    if(existing) existing.qty += qty;
+    else cart.push({sku, size: option, qty, source});
+    renderCart();
+    openEkakoCartDrawer();
+    return true;
+  }
   function updateQty(idx, delta){
     const item = cart[idx];
     const next = Math.max(1, item.qty + delta);
     const addDelta = next - item.qty;
-    if(addDelta > 0){
-      const v = validateStock(item.sku, item.size, addDelta);
-      if(!v.ok){ alert(v.msg); return; }
+    if(addDelta > remainingStockForCart(item.sku,item.size)){
+      alert(`Stock insuffisant pour cette taille. Restant : ${remainingStockForCart(item.sku,item.size)}.`);
+      return;
     }
     item.qty = next;
     renderCart();
@@ -3231,6 +3256,10 @@ async function loadResellerStats(){
               ⚠ ${i.reorder_issue}
             </div>
           ` : ``}
+          ${mode === "reseller" && p && cart.filter(row=>row.sku===i.sku).reduce((sum,row)=>sum+row.qty,0) < p.moq ? `
+            <div class="mini" style="margin-top:6px;color:#9a5600;font-weight:700">
+              MOQ par couleur : ${cart.filter(row=>row.sku===i.sku).reduce((sum,row)=>sum+row.qty,0)} / ${p.moq} unités. Ajoutez d'autres tailles de cette référence.
+            </div>` : ""}
 
           <div class="qty">
             <button aria-label="moins">−</button>
@@ -3267,12 +3296,18 @@ async function loadResellerStats(){
     byId("quarterHint").textContent = cart.length ? `Total livraison: ${money(shipping)}` : "";
   }
 
-  const hasIssues = cart.some(i => i.reorder_issue);
+  const exceedsVariantStock = cart.some(i => cartQtyForVariant(i.sku,i.size) > stockOf(i.sku,i.size));
+  const belowResellerMoq = mode === "reseller" && cart.some(i => {
+    const p = getProduct(i.sku);
+    return !!p && cart.filter(row=>row.sku === i.sku).reduce((sum,row)=>sum+row.qty,0) < p.moq;
+  });
+  const hasIssues = cart.some(i => i.reorder_issue) || exceedsVariantStock || belowResellerMoq;
   if(byId("payNowBtn")){
     const btn = byId("payNowBtn");
     btn.disabled = hasIssues;
     btn.title = hasIssues
-      ? "Corrige les articles signalés avant de passer au paiement."
+      ? (belowResellerMoq ? "Complétez le minimum revendeur de chaque référence avant paiement."
+        : "Corrige les articles signalés avant de passer au paiement.")
       : "";
 
     btn.style.opacity = hasIssues ? "0.55" : "1";
@@ -3702,8 +3737,10 @@ function validateReorderCart(cartItems){
       const qty = dist[size];
       if(qty <= 0) continue;
 
-      const v = validateStock(sku, size, qty);
-      if(!v.ok){ alert(v.msg); return; }
+      if(qty > remainingStockForCart(sku,size)){
+        alert(`Stock restant insuffisant pour ${sku}, taille ${size} : ${remainingStockForCart(sku,size)}.`);
+        return;
+      }
     }
     const p = getProduct(sku);
     if(total < p.moq){ alert(`MOQ non atteint pour ${sku}: minimum ${p.moq}`); return; }

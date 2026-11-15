@@ -178,6 +178,50 @@ class CheckoutStabilisationTests(TestCase):
         self.variant.refresh_from_db()
         self.assertEqual(self.variant.stock_qty, 3)
 
+    def test_reseller_moq_counts_sizes_together_per_sku(self):
+        second_size = Size.objects.create(label="TAILLE_TEST_2")
+        second_variant = Variant.objects.create(
+            product=self.product, size=second_size, stock_qty=3
+        )
+        self.client.force_login(self.reseller)
+        payload = self.payload(qty=2)
+        payload["items"].append({
+            "sku": self.product.sku,
+            "size": second_size.label,
+            "qty": 2,
+        })
+        with self.cloudflare():
+            response = self.post_order(payload, key="recette_moq_sizes_aggregate_01")
+        self.assertEqual(response.status_code, 200, response.content)
+        order = Order.objects.get(order_no=response.json()["orderNo"])
+        self.assertEqual(order.mode, "reseller")
+        self.assertEqual(order.subtotal, 4 * 9000)
+        self.variant.refresh_from_db()
+        second_variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 5)
+        self.assertEqual(second_variant.stock_qty, 1)
+
+    def test_reseller_moq_never_allows_exceeding_size_stock(self):
+        second_size = Size.objects.create(label="TAILLE_TEST_3")
+        second_variant = Variant.objects.create(
+            product=self.product, size=second_size, stock_qty=3
+        )
+        self.client.force_login(self.reseller)
+        payload = self.payload(qty=8)
+        payload["items"].append({
+            "sku": self.product.sku,
+            "size": second_size.label,
+            "qty": 2,
+        })
+        with self.cloudflare():
+            response = self.post_order(payload, key="recette_stock_variant_oversell_01")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Order.objects.count(), 0)
+        self.variant.refresh_from_db()
+        second_variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 7)
+        self.assertEqual(second_variant.stock_qty, 3)
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))
