@@ -38,9 +38,8 @@ class LoginThrottleTests(TestCase):
         self.assertEqual(self.login("wrong").status_code, 401)
         self.assertEqual(self.login("GoodPass123!Secure").status_code, 200)
         self.assertEqual(self.login("wrong").status_code, 401)
-        from accounts.login_throttle import _keys
-        pair, _ = _keys(self.client.request().wsgi_request, "client_limit_test")
         # Le compteur pair repart de 1 après une connexion réussie.
+        # L'autre compteur, lié à l'IP, peut conserver l'historique.
         self.assertTrue(LoginAttemptCounter.objects.filter(failures=1).exists())
 
     def test_automatic_expiration(self):
