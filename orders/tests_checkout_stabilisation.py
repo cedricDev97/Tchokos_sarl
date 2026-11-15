@@ -348,6 +348,64 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(wrong_phone.status_code, 404)
         self.assertNotIn("whatsapp_url", wrong_phone.json())
 
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_whatsapp_manual_payment_choice_requires_privileged_confirmation(self):
+        from orders.models import PaymentStatusLog
+        with self.cloudflare():
+            response = self.post_order(self.payload(), key="recette_wa_manual_pay_00001")
+        self.assertEqual(response.status_code, 200, response.content)
+        no = response.json()["orderNo"]
+        endpoint = reverse("admin_confirm_whatsapp_payment_method_api", kwargs={"order_no": no})
+        data = {"pay_method": "MTN Mobile Money", "confirmed_with_customer": True}
+
+        anonymous = self.client.post(endpoint, json.dumps(data), content_type="application/json")
+        self.assertNotEqual(anonymous.status_code, 200)
+        self.client.force_login(self.reseller)
+        forbidden = self.client.post(endpoint, json.dumps(data), content_type="application/json")
+        self.assertNotEqual(forbidden.status_code, 200)
+
+        admin = get_user_model().objects.create_superuser(
+            username="ekako_wa_admin_test", password="SafePass123!zzz", email="admin@example.test"
+        )
+        self.client.force_login(admin)
+        unconfirmed = self.client.post(endpoint,
+            json.dumps({"pay_method":"MTN Mobile Money","confirmed_with_customer":False}),
+            content_type="application/json")
+        self.assertEqual(unconfirmed.status_code, 400)
+        confirmed = self.client.post(endpoint, json.dumps(data), content_type="application/json")
+        self.assertEqual(confirmed.status_code, 200, confirmed.content)
+        order = Order.objects.get(order_no=no)
+        self.assertEqual(order.pay_method, "MTN Mobile Money")
+        self.assertEqual(order.payment_state, "unpaid")
+        self.assertEqual(PaymentStatusLog.objects.filter(order=order).count(), 1)
+        again = self.client.post(endpoint, json.dumps(data), content_type="application/json")
+        self.assertEqual(again.status_code, 200)
+        self.assertEqual(PaymentStatusLog.objects.filter(order=order).count(), 1)
+        changed = self.client.post(endpoint, json.dumps({
+            "pay_method":"Orange Money","confirmed_with_customer":True
+        }), content_type="application/json")
+        self.assertEqual(changed.status_code, 409)
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_whatsapp_payment_must_not_be_manually_marked_paid_before_method_choice(self):
+        with self.cloudflare():
+            response = self.post_order(self.payload(), key="recette_wa_no_direct_paid_01")
+        self.assertEqual(response.status_code, 200, response.content)
+        no = response.json()["orderNo"]
+        admin = get_user_model().objects.create_superuser(
+            username="ekako_wa_paid_admin_test", password="SafePass123!zzz", email="admin2@example.test"
+        )
+        self.client.force_login(admin)
+        payment = self.client.post(
+            reverse("admin_update_payment_status_api", kwargs={"order_no": no}),
+            json.dumps({"payment_status":"paid","payment_ref":"MTN-12345678","verified":True}),
+            content_type="application/json"
+        )
+        self.assertEqual(payment.status_code, 409, payment.content)
+        order = Order.objects.get(order_no=no)
+        self.assertEqual(order.payment_state, "unpaid")
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))

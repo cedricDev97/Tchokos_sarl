@@ -943,6 +943,11 @@ def admin_confirm_whatsapp_payment_method_api(request, order_no: str):
             return JsonResponse({"ok": False, "error": "Réservation expirée. Crée une nouvelle commande."}, status=409)
         if order.pay_method == method:
             return JsonResponse({"ok": True, "pay_method": method, "idempotent": True})
+        if order.pay_method != "A confirmer sur WhatsApp":
+            return JsonResponse({
+                "ok": False,
+                "error": "Moyen de paiement déjà confirmé. Tout changement exige une revue manuelle."
+            }, status=409)
         old_method = order.pay_method
         order.pay_method = method
         # COD : le client a confirmé sa commande à un conseiller.
