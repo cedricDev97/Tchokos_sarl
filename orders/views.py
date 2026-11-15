@@ -825,6 +825,10 @@ def admin_order_detail_api(request, order_no: str):
         "quarter": o.quarter,
         "address": o.address,
         "pay_method": getattr(o, "pay_method", ""),
+        "checkout_channel": o.checkout_channel,
+        "reservation_expires_at": (
+            o.reservation_expires_at.isoformat() if o.reservation_expires_at else None
+        ),
         "payment_status": getattr(o, "payment_state", "unpaid"),
         "payment_ref": getattr(o, "payment_reference", ""),
         "paid_at": o.paid_at.isoformat() if getattr(o, "paid_at", None) else None,

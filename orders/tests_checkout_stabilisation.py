@@ -437,6 +437,33 @@ class CheckoutStabilisationTests(TestCase):
         order = Order.objects.get(order_no=no)
         self.assertEqual(order.payment_state, "unpaid")
 
+
+    @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
+    def test_admin_detail_exposes_whatsapp_channel_and_reservation(self):
+        """Le Dashboard doit recevoir les champs utilises par son selecteur de paiement."""
+        with self.cloudflare():
+            created = self.post_order(self.payload(), key="recette_wa_admin_detail_001")
+        self.assertEqual(created.status_code, 200, created.content)
+        no = created.json()["orderNo"]
+        detail_url = reverse("admin_order_detail_api", kwargs={"order_no": no})
+        self.client.force_login(self.reseller)
+        forbidden = self.client.get(detail_url)
+        self.assertNotEqual(forbidden.status_code, 200)
+        admin = get_user_model().objects.create_superuser(
+            username="ekako_whatsapp_detail_admin",
+            email="detail@example.test",
+            password="SafePass123!zzz",
+        )
+        self.client.force_login(admin)
+        detail = self.client.get(detail_url)
+        self.assertEqual(detail.status_code, 200, detail.content)
+        order = detail.json()["order"]
+        self.assertEqual(order["orderNo"], no)
+        self.assertEqual(order["checkout_channel"], "whatsapp")
+        self.assertEqual(order["pay_method"], "A confirmer sur WhatsApp")
+        self.assertEqual(order["payment_status"], "unpaid")
+        self.assertEqual(order["reservation_expires_at"], created.json()["reservation_expires_at"])
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))
