@@ -38,6 +38,20 @@ SHIPPING = {
     "Autre": {"base": 4000, "quarters": {"Autre":1000}},
 }
 
+def normalize_cameroon_mobile(value):
+    """Retourne un mobile camerounais en 9 chiffres, sans indicatif."""
+    if not isinstance(value, str):
+        return None
+    raw = re.sub(r"[\s().-]", "", value.strip())
+    if raw.startswith("00237"):
+        raw = raw[5:]
+    elif raw.startswith("+237"):
+        raw = raw[4:]
+    elif raw.startswith("237"):
+        raw = raw[3:]
+    return raw if re.fullmatch(r"6[0-9]{8}", raw) else None
+
+
 def compute_shipping(city: str, quarter: str) -> int:
     conf = SHIPPING.get(city) or SHIPPING["Autre"]
     base = int(conf.get("base", 0))
@@ -67,6 +81,11 @@ import json
 @require_POST
 def checkout_api(request):
     """Créer une commande et décrémenter chaque variante UNE fois, atomiquement."""
+    if getattr(settings, "IS_PRODUCTION", False) or getattr(settings, "EKAKO_CHECKOUT_MODE", "closed") != "sandbox":
+        return JsonResponse({
+            "ok": False,
+            "error": "Les commandes en ligne ne sont pas encore ouvertes. Aucun paiement n'a été effectué.",
+        }, status=503)
     from django.db import OperationalError
     from django.db.models import F
 
@@ -97,6 +116,14 @@ def checkout_api(request):
         if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
             return JsonResponse({"ok": False, "error": f"Champ client invalide : {field}."}, status=400)
         clean_customer[field] = value.strip()
+
+    mobile = normalize_cameroon_mobile(clean_customer["phone"])
+    if mobile is None:
+        return JsonResponse({
+            "ok": False,
+            "error": "Téléphone camerounais invalide : indique un mobile de 9 chiffres commençant par 6 (avec ou sans +237).",
+        }, status=400)
+    clean_customer["phone"] = mobile
 
     # Même SKU + même taille : toutes les lignes comptent comme une seule demande.
     quantities = {}
@@ -173,6 +200,7 @@ def checkout_api(request):
                 return JsonResponse({
                     "ok": True, "orderNo": previous.order.order_no,
                     "mode": previous.order.mode, "idempotent": True,
+                    "payment_status": previous.order.payment_state,
                 })
 
             order_lines = []
@@ -290,7 +318,10 @@ def checkout_api(request):
     except OperationalError:
         return JsonResponse({"ok": False, "error": "Stock momentanément occupé. Réessaie."}, status=503)
 
-    return JsonResponse({"ok": True, "orderNo": order.order_no, "mode": pricing_mode})
+    return JsonResponse({
+        "ok": True, "orderNo": order.order_no,
+        "mode": pricing_mode, "payment_status": order.payment_state,
+    })
 
 # EKAKO_COMMANDES_SECURITE_V1 : second facteur de vérification du suivi client.
 @require_POST
@@ -304,7 +335,8 @@ def track_api(request, order_no: str):
     if not isinstance(payload, dict):
         return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
 
-    supplied = "".join(ch for ch in str(payload.get("phone") or "") if ch.isascii() and ch.isdigit())
+    supplied_raw = str(payload.get("phone") or "")
+    supplied = "".join(ch for ch in supplied_raw if ch.isascii() and ch.isdigit())
     if len(supplied) < 8:
         return JsonResponse({"ok": False, "error": "Indique le téléphone associé à ta commande."}, status=400)
 
@@ -314,7 +346,13 @@ def track_api(request, order_no: str):
         return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
 
     expected = "".join(ch for ch in str(o.customer_phone or "") if ch.isascii() and ch.isdigit())
-    if not hmac.compare_digest(supplied, expected):
+    entered_mobile = normalize_cameroon_mobile(supplied_raw)
+    saved_mobile = normalize_cameroon_mobile(o.customer_phone)
+    # Retenir la compatibilite avec les anciens numeros historiques.
+    valid = (hmac.compare_digest(entered_mobile, saved_mobile)
+             if entered_mobile and saved_mobile
+             else hmac.compare_digest(supplied, expected))
+    if not valid:
         return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
 
     return JsonResponse({
@@ -322,6 +360,7 @@ def track_api(request, order_no: str):
         "order": {
             "orderNo": o.order_no,
             "status": o.status,
+            "payment_status": o.payment_state,
             "createdAt": o.created_at.isoformat(),
             "customer": {
                 "name": o.customer_name,

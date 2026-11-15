@@ -16,7 +16,7 @@
 
 
 </head>
-<body data-ekako-turnstile-enabled="{% if turnstile_enabled %}1{% else %}0{% endif %}" data-ekako-turnstile-sitekey="{{ turnstile_sitekey }}">
+<body data-ekako-turnstile-enabled="{% if turnstile_enabled %}1{% else %}0{% endif %}" data-ekako-turnstile-sitekey="{{ turnstile_sitekey }}" data-ekako-checkout-mode="{{ checkout_mode }}">
   <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
 <header>
   <div class="topbar">
@@ -601,12 +601,12 @@
               <div class="row"><span>Livraison</span><span id="shipping">0 FCFA</span></div>
               <div class="row"><strong>Total</strong><strong id="total">0 FCFA</strong></div>
 
-              <button class="btn primary" id="checkoutBtn" style="margin-top:8px">✅ Passer au paiement</button>
+              <button class="btn primary" id="checkoutBtn" style="margin-top:8px">✅ Vérifier la commande</button>
 
               <div class="checkout" id="checkoutSection">
                 <div class="checkout-grid">
                   <div><label>Nom complet</label><input class="text" id="cName" placeholder="Ex: Junior N." /></div>
-                  <div><label>Telephone</label><input class="text" id="cPhone" placeholder="Ex: 6xx xx xx xx" /></div>
+                  <div><label for="cPhone">Téléphone camerounais</label><input class="text" id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="22" aria-describedby="cPhoneHint cPhoneError" placeholder="Ex : 699 00 11 22 ou +237 699 00 11 22" /><div id="cPhoneHint" class="hintline">9 chiffres commençant par 6, avec ou sans +237.</div><div id="cPhoneError" role="alert" hidden style="color:#b42318;font-size:12px;font-weight:700"></div></div>
 
                   <div>
                     <label>Ville</label>
@@ -621,7 +621,7 @@
 
                   <div><label>Adresse / details</label><input class="text" id="cAddr" placeholder="Ex: Rue, immeuble, repere..." /></div>
                   <div>
-                    <label>Mode de paiement</label>
+                    <label>Mode de paiement souhaité (aucun encaissement en ligne)</label>
                     <select id="cPay">
                       <option>MTN Mobile Money</option>
                       <option>Orange Money</option>
@@ -631,8 +631,13 @@
                 </div>
 
                 <div class="paybox">
-                  <div class="muted">Mode test : crée une commande non payée et réduit le stock. Aucun paiement réel.</div>
-                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">🧾 Enregistrer une commande test</button>
+                  {% if checkout_mode == "sandbox" %}
+                  <div class="muted" role="note"><strong>Recette locale uniquement.</strong> Cette action crée une commande dans la base de données locale et décrémente les stocks. <strong>Statut : non payé.</strong> Aucun paiement MTN ou Orange Money n'est effectué. Utiliser des données de test.</div>
+                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn">🧾 Enregistrer une commande TEST (stock débité)</button>
+                  {% else %}
+                  <div class="muted" role="status"><strong>Commandes temporairement fermées.</strong> Aucun paiement ou commande n'est accepté.</div>
+                  <button class="btn primary" style="width:100%;justify-content:center;margin-top:10px" id="payNowBtn" disabled>Commandes indisponibles</button>
+                  {% endif %}
 
                   <div class="success" id="successBox">
                     ✅ Commande test enregistrée (non payée). N° commande : <strong id="orderNo"></strong><br/>
@@ -829,7 +834,7 @@
     <div class="hr"></div>
 
     <div style="display:flex; flex-direction:column; gap:10px;">
-      <div class="muted">Commande enregistrée en mode test. Aucun paiement Mobile Money n'a été effectué.</div>
+      <div class="muted">Commande enregistrée dans la base locale. <strong>Statut de paiement : Non payé.</strong> Aucun paiement Mobile Money n'a été effectué. Les stocks ont été diminués.</div>
 
       <div class="row" style="justify-content:space-between;">
         <div class="muted">Numéro de commande</div>

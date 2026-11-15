@@ -222,6 +222,46 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(self.variant.stock_qty, 7)
         self.assertEqual(second_variant.stock_qty, 3)
 
+    def test_invalid_cameroon_phone_is_rejected_without_stock_change(self):
+        for index, invalid in enumerate(("6543-2023", "123456789", "69900112", "6990011220", "69900A122")):
+            with self.subTest(phone=invalid), self.cloudflare():
+                payload = self.payload()
+                payload["customer"]["phone"] = invalid
+                response = self.post_order(payload, key=f"recette_bad_phone_{index:02d}_00001")
+                self.assertEqual(response.status_code, 400, response.content)
+                self.assertIn("Téléphone camerounais", response.json()["error"])
+                self.assert_untouched()
+
+    def test_phone_with_country_prefix_is_normalized_and_trackable(self):
+        payload = self.payload()
+        payload["customer"]["phone"] = "+237 699 00 11 22"
+        with self.cloudflare():
+            response = self.post_order(payload, key="recette_phone_prefix_valid_001")
+        self.assertEqual(response.status_code, 200, response.content)
+        order = Order.objects.get(order_no=response.json()["orderNo"])
+        self.assertEqual(order.customer_phone, "699001122")
+        self.assertEqual(order.payment_state, "unpaid")
+        self.assertEqual(response.json()["payment_status"], "unpaid")
+        lookup = self.client.post(
+            reverse("track_api", kwargs={"order_no": order.order_no}),
+            data=json.dumps({"phone": "699 00 11 22"}),
+            content_type="application/json",
+        )
+        self.assertEqual(lookup.status_code, 200, lookup.content)
+        self.assertEqual(lookup.json()["order"]["payment_status"], "unpaid")
+
+    @override_settings(EKAKO_CHECKOUT_MODE="closed")
+    def test_checkout_closed_does_not_create_order(self):
+        response = self.post_order(self.payload(), key="recette_closed_checkout_0001")
+        self.assertEqual(response.status_code, 503, response.content)
+        self.assert_untouched()
+
+    @override_settings(IS_PRODUCTION=True, EKAKO_CHECKOUT_MODE="sandbox")
+    def test_production_never_accepts_sandbox_checkout(self):
+        response = self.post_order(self.payload(), key="recette_prod_guard_0000001")
+        self.assertEqual(response.status_code, 503, response.content)
+        self.assert_untouched()
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))

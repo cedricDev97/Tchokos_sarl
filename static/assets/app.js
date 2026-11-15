@@ -1,3 +1,11 @@
+function normalizeCameroonMobile(value){
+  let raw = String(value ?? "").trim().replace(/[\s().-]/g,"");
+  if(raw.startsWith("00237")) raw = raw.slice(5);
+  else if(raw.startsWith("+237")) raw = raw.slice(4);
+  else if(raw.startsWith("237")) raw = raw.slice(3);
+  return /^6[0-9]{8}$/.test(raw) ? raw : null;
+}
+
 function getCookie(name){
   const cookies = document.cookie ? document.cookie.split(";") : [];
   for (let i = 0; i < cookies.length; i++) {
@@ -3407,6 +3415,10 @@ async function ekakoCheckoutAttempt(payload){
 }
 
 async function payNow(){
+  if(document.body.dataset.ekakoCheckoutMode !== "sandbox"){
+    alert("Les commandes en ligne sont temporairement fermées.");
+    return;
+  }
   if(cart.length===0) return;
 
   const InvalidReorderItems = cart.find(i => i.reorder_issue);
@@ -3430,7 +3442,13 @@ async function payNow(){
   }
 
   const name = (byId("cName").value||"").trim();
-  const phone = (byId("cPhone").value||"").trim();
+  const phone = normalizeCameroonMobile(byId("cPhone").value);
+  const phoneError = byId("cPhoneError");
+  if(phoneError){
+    phoneError.hidden = !!phone;
+    phoneError.textContent = phone ? "" : "Indique un mobile camerounais valide (9 chiffres commençant par 6, avec ou sans +237).";
+  }
+  if(!phone){ byId("cPhone")?.focus(); return; }
   const city = byId("cCity").value;
   const quarter = byId("cQuarter").value;
   const addr = (byId("cAddr").value||"").trim();
@@ -3565,7 +3583,10 @@ async function renderTrackingFromApi(orderNo){
           <div style="font-weight:800">${o.orderNo}</div>
           <div class="muted">${new Date(o.createdAt).toLocaleString()}</div>
         </div>
-        <div class="pill">${escapeHtml(o.status || "")}</div>
+        <div>
+          <div class="pill">${escapeHtml(o.status || "")}</div>
+          <div class="muted" style="margin-top:6px">Paiement : ${o.payment_status === "paid" ? "Payé" : o.payment_status === "pending" ? "En attente" : "Non payé"}</div>
+        </div>
       </div>
 
       <div class="hr"></div>

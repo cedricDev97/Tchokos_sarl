@@ -210,6 +210,16 @@ if IS_PRODUCTION:
     }
 
 # eKAKO stabilisation: activation depuis les variables d'environnement.
+# Mode V1 : les commandes de recette ecrivent dans la base locale et reduisent le stock.
+# Jamais de commande publique avant l'integration et la recette de paiement.
+EKAKO_CHECKOUT_MODE = os.environ.get(
+    "EKAKO_CHECKOUT_MODE", "closed" if IS_PRODUCTION else "sandbox"
+).strip().lower()
+if EKAKO_CHECKOUT_MODE not in {"sandbox", "closed"}:
+    raise RuntimeError("EKAKO_CHECKOUT_MODE doit etre sandbox ou closed")
+if IS_PRODUCTION and EKAKO_CHECKOUT_MODE != "closed":
+    raise RuntimeError("Checkout production indisponible avant integration des paiements.")
+
 EKAKO_MAINTENANCE = os.environ.get("EKAKO_MAINTENANCE", "0") == "1"
 EKAKO_TURNSTILE_ENABLED = os.environ.get("EKAKO_TURNSTILE_ENABLED", "0") == "1"
 EKAKO_TURNSTILE_SITE_KEY = os.environ.get("EKAKO_TURNSTILE_SITE_KEY", "").strip()

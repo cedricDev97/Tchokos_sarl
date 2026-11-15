@@ -12,4 +12,8 @@ def home(request):
 
 
 def boutique(request):
-    return render(request, "storefront/index.html", {"turnstile_enabled": settings.EKAKO_TURNSTILE_ENABLED, "turnstile_sitekey": settings.EKAKO_TURNSTILE_SITE_KEY})
+    return render(request, "storefront/index.html", {
+        "turnstile_enabled": settings.EKAKO_TURNSTILE_ENABLED,
+        "turnstile_sitekey": settings.EKAKO_TURNSTILE_SITE_KEY,
+        "checkout_mode": settings.EKAKO_CHECKOUT_MODE,
+    })
