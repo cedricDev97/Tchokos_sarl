@@ -137,6 +137,15 @@ if EKAKO_DB_ENGINE not in {"sqlite", "postgresql"}:
     raise RuntimeError("EKAKO_DB_ENGINE doit être sqlite ou postgresql")
 if IS_PRODUCTION and EKAKO_DB_ENGINE != "postgresql":
     raise RuntimeError("eKAKO production requiert PostgreSQL (EKAKO_DB_ENGINE=postgresql).")
+
+# Base indépendante pour les recettes manuelles du Checkout WhatsApp.
+# Active uniquement en developpement SQLite ; aucune redirection implicite.
+EKAKO_SQLITE_TEST_DB = os.environ.get("EKAKO_SQLITE_TEST_DB", "0") == "1"
+if EKAKO_SQLITE_TEST_DB:
+    if IS_PRODUCTION or EKAKO_DB_ENGINE != "sqlite":
+        raise RuntimeError("EKAKO_SQLITE_TEST_DB=1 autorisé uniquement en developpement SQLite")
+    DATABASES["default"]["NAME"] = BASE_DIR / "db_whatsapp_recette.sqlite3"
+
 if EKAKO_DB_ENGINE == "postgresql":
     required = ("EKAKO_DB_NAME", "EKAKO_DB_USER", "EKAKO_DB_PASSWORD", "EKAKO_DB_HOST")
     missing = [name for name in required if not os.environ.get(name, "").strip()]
@@ -229,6 +238,8 @@ if EKAKO_WHATSAPP_NUMBER and not re.fullmatch(r"2376[0-9]{8}", EKAKO_WHATSAPP_NU
     raise RuntimeError("EKAKO_WHATSAPP_NUMBER doit etre un mobile camerounais au format 2376XXXXXXXX")
 if EKAKO_CHECKOUT_MODE == "whatsapp" and not EKAKO_WHATSAPP_NUMBER:
     raise RuntimeError("EKAKO_WHATSAPP_NUMBER est obligatoire pour activer le Checkout WhatsApp")
+if EKAKO_CHECKOUT_MODE == "whatsapp" and not IS_PRODUCTION and EKAKO_DB_ENGINE == "sqlite" and not EKAKO_SQLITE_TEST_DB:
+    raise RuntimeError("Pour tester le Checkout WhatsApp en local, utiliser EKAKO_SQLITE_TEST_DB=1 afin de ne pas toucher à db.sqlite3")
 EKAKO_WHATSAPP_RESERVATION_MINUTES = int(os.environ.get("EKAKO_WHATSAPP_RESERVATION_MINUTES", "60"))
 if not 15 <= EKAKO_WHATSAPP_RESERVATION_MINUTES <= 240:
     raise RuntimeError("Reservation WhatsApp autorisee entre 15 et 240 minutes")

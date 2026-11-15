@@ -74,3 +74,36 @@ Ne pas passer `EKAKO_CHECKOUT_MODE=whatsapp` en production avant :
 - tests sur base de recette, incluant messages abandonnés et paiements tardifs ;
 - conditions de remboursement, disponibilité fournisseurs et tarification livraison validées ;
 - contrôles d'accès, CSRF, anti-bot, HTTPS et supervision approuvés.
+
+## Recette visuelle sur une base locale isolée
+
+Ne pas ouvrir de commandes WhatsApp sur `db.sqlite3`, même en développement.
+La variable `EKAKO_SQLITE_TEST_DB=1` sélectionne uniquement
+`db_whatsapp_recette.sqlite3` (fichier ignoré par Git) et le mode WhatsApp
+refuse de démarrer sur la base SQLite principale.
+
+Après une sauvegarde de `db.sqlite3`, arrêter le serveur et réaliser
+une copie SQLite cohérente dans le projet :
+
+```bash
+python3 -c 'import sqlite3; src=sqlite3.connect("db.sqlite3"); dst=sqlite3.connect("db_whatsapp_recette.sqlite3"); src.backup(dst); dst.close(); src.close()'
+EKAKO_SQLITE_TEST_DB=1 python3 manage.py migrate
+EKAKO_SQLITE_TEST_DB=1 python3 manage.py shell -c 'from django.conf import settings; print(settings.DATABASES["default"]["NAME"])'
+```
+
+Dans le terminal de recette, remplacer le numéro ci-dessous par un numéro
+WhatsApp contrôlé par l'équipe (ne pas copier la chaîne fictive en l'état) :
+
+```bash
+EKAKO_SQLITE_TEST_DB=1 EKAKO_CHECKOUT_MODE=whatsapp EKAKO_WHATSAPP_NUMBER=2376XXXXXXXX python3 manage.py runserver 127.0.0.1:8001
+```
+
+Une demande de test diminue **uniquement le stock copié**.
+Pour simuler la libération du stock dans cette même base :
+
+```bash
+EKAKO_SQLITE_TEST_DB=1 python3 manage.py expire_whatsapp_reservations
+```
+
+Ne pas faire tourner ce job sans la variable `EKAKO_SQLITE_TEST_DB` dans
+l'environnement de recette.
