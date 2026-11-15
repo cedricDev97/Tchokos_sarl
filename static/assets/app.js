@@ -132,6 +132,69 @@ function getResellerPaymentFlag(paymentStatus){
   return "";
 }
 
+
+function renderOrderFinance(orderNo, response){
+  if(!response?.ok || !response.finance){
+    return '<div class="orderDetailCard"><div class="orderDetailSectionTitle">Rentabilité</div><div class="muted">Données financières indisponibles.</div></div>';
+  }
+  const f = response.finance;
+  const c = f.costs || {};
+  const amount = n => n === null || n === undefined ? "À renseigner" : money(n);
+  const field = (id, title, v) => `
+    <label class="financeField" for="${id}">${title}
+      <input id="${id}" class="text" type="number" min="0" max="100000000" step="1"
+        inputmode="numeric" placeholder="À renseigner" value="${v == null ? "" : v}">
+    </label>`;
+  return `
+    <div class="orderDetailCard orderFinanceCard">
+      <div class="orderDetailSectionTitle">Rentabilité de la commande</div>
+      <p class="muted">Marge contributive : chiffre d'affaires moins achats fournisseur et coûts variables. Elle ne tient pas compte des charges fixes, impôts et frais non renseignés.</p>
+      <div class="financeSummaryRows">
+        <div><span>Ventes articles</span><strong>${amount(f.subtotal)}</strong></div>
+        <div><span>Livraison facturée</span><strong>${amount(f.shipping_revenue)}</strong></div>
+        <div><span>Total facturé</span><strong>${amount(f.order_total)}</strong></div>
+        <div><span>Coût fournisseur</span><strong>${amount(f.supplier_cost)}</strong></div>
+        <div><span>Marge brute sur articles</span><strong>${amount(f.gross_product_margin)}</strong></div>
+        <div class="financeGrand"><span>Marge contributive ${f.status === "complete" ? "calculée" : "(provisoire ou incomplète)"}</span><strong>${amount(f.margin_contribution)}</strong></div>
+      </div>
+      <div class="financeFields">
+        ${field("financeCourierCost","Coût livreur (FCFA)",c.courier_cost)}
+        ${field("financePaymentFee","Frais de paiement (FCFA)",c.payment_fee)}
+        ${field("financeOtherCost","Autres coûts variables (FCFA)",c.other_cost)}
+      </div>
+      <p class="muted">Indique 0 uniquement lorsque le coût est réellement nul. Ces montants sont déclarés manuellement ; aucune transaction n'est effectuée.</p>
+      <button type="button" class="btn small primary" onclick="saveOrderFinance('${escapeHtml(orderNo)}')">Enregistrer les coûts</button>
+    </div>`;
+}
+
+async function saveOrderFinance(orderNo){
+  const ids = {courier_cost:"financeCourierCost",payment_fee:"financePaymentFee",other_cost:"financeOtherCost"};
+  const values = {};
+  for(const [key,id] of Object.entries(ids)){
+    const raw = (byId(id)?.value || "").trim();
+    const n = Number(raw);
+    if(raw === "" || !Number.isSafeInteger(n) || n < 0 || n > 100000000){
+      alert("Renseigne tous les montants en FCFA entiers positifs (0 accepté).");
+      byId(id)?.focus();
+      return;
+    }
+    values[key] = n;
+  }
+  const reason = prompt("Motif de la saisie/correction (journalisé) :", "RECETTE - frais de simulation");
+  if(reason === null) return;
+  if(reason.trim().length < 4 || reason.trim().length > 255){
+    alert("Motif obligatoire : entre 4 et 255 caractères.");
+    return;
+  }
+  if(!confirm("Enregistrer ces coûts variables pour la commande ?")) return;
+  try{
+    await apiPost(`/api/admin/order/${encodeURIComponent(orderNo)}/finance/`,{...values,reason:reason.trim()});
+    await openOrderDetail(orderNo);
+  }catch(err){
+    alert(err?.error || err?.message || "Erreur de sauvegarde du bilan financier.");
+  }
+}
+
 async function openOrderDetail(orderNo){
   const modal = byId("orderDetailModal");
   const body = byId("orderDetailBody");
@@ -139,13 +202,15 @@ async function openOrderDetail(orderNo){
   body.innerHTML = `<div class="muted">Chargement...</div>`;
 
   try{
-    const [detailRes, timelineRes] = await Promise.all([
+    const [detailRes, timelineRes, financeRes] = await Promise.all([
       fetch(`/api/admin/order/${encodeURIComponent(orderNo)}/`),
-      fetch(`/api/admin/orders/${encodeURIComponent(orderNo)}/timeline/`)
+      fetch(`/api/admin/orders/${encodeURIComponent(orderNo)}/timeline/`),
+      adminPermissions.payments ? fetch(`/api/admin/order/${encodeURIComponent(orderNo)}/finance/`) : Promise.resolve(null)
     ]);
 
     const detailData = await detailRes.json().catch(()=>({}));
     const timelineData = await timelineRes.json().catch(()=>({}));
+    const financeData = financeRes ? await financeRes.json().catch(()=>({ok:false})) : null;
 
     if(!detailRes.ok || !detailData.ok){
       throw new Error(detailData.error || "Erreur détail commande");
@@ -263,6 +328,8 @@ async function openOrderDetail(orderNo){
           <div class="row" style="justify-content:space-between;"><div style="font-weight:900">Total</div><div style="font-weight:900">${money(o.total||0)}</div></div>
         </div>
       </div>
+
+      ${adminPermissions.payments ? renderOrderFinance(o.orderNo, financeData) : ""}
 
       <div class="orderDetailCard">
         <div class="orderDetailSectionTitle">Historique</div>

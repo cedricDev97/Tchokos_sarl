@@ -540,6 +540,94 @@ class CheckoutStabilisationTests(TestCase):
                 self.assertEqual(order.payment_reference, "RECETTE-MTN-12345678")
                 self.assertEqual(PaymentStatusLog.objects.filter(order=order).count(), first_count)
 
+
+    @override_settings(
+        EKAKO_CHECKOUT_MODE="whatsapp",
+        EKAKO_WHATSAPP_NUMBER="237699001122",
+    )
+    def test_finance_never_conflates_missing_costs_with_zero(self):
+        """La marge contributive reste inconnue tant que les frais ne sont pas renseignés."""
+        from sourcing.models import Supplier, ProcurementLine
+        from orders.models import OrderCostSheet, OrderCostRevision
+
+        with self.cloudflare():
+            response = self.post_order(self.payload(), key="recette_finance_test_case_0001")
+        self.assertEqual(response.status_code, 200, response.content)
+        number = response.json()["orderNo"]
+        finance_url = reverse("admin_order_finance_api", kwargs={"order_no": number})
+        self.client.force_login(self.reseller)
+        self.assertNotEqual(self.client.get(finance_url).status_code, 200)
+
+        admin = get_user_model().objects.create_superuser(
+            username="ekako_finance_test_admin", email="finance@example.test",
+            password="SafePass123!zzz",
+        )
+        self.client.force_login(admin)
+        first = self.client.get(finance_url)
+        self.assertEqual(first.status_code, 200, first.content)
+        self.assertIsNone(first.json()["finance"]["margin_contribution"])
+        self.assertEqual(first.json()["finance"]["status"], "incomplete")
+
+        incomplete = self.client.post(
+            finance_url,
+            data=json.dumps({"courier_cost": 0, "payment_fee": 0, "reason": "Test sans frais manquant"}),
+            content_type="application/json",
+        )
+        self.assertEqual(incomplete.status_code, 400)
+        invalid = self.client.post(
+            finance_url,
+            data=json.dumps({"courier_cost": -5, "payment_fee": 0, "other_cost": 0, "reason": "Montant invalide"}),
+            content_type="application/json",
+        )
+        self.assertEqual(invalid.status_code, 400)
+
+        saved = self.client.post(
+            finance_url,
+            data=json.dumps({"courier_cost": 2500, "payment_fee": 150,
+                             "other_cost": 0, "reason": "Test initial contrôlé"}),
+            content_type="application/json",
+        )
+        self.assertEqual(saved.status_code, 200, saved.content)
+        self.assertEqual(saved.json()["finance"]["costs"]["other_cost"], 0)
+        self.assertIsNone(saved.json()["finance"]["margin_contribution"])
+        self.assertEqual(OrderCostSheet.objects.count(), 1)
+        self.assertEqual(OrderCostRevision.objects.count(), 1)
+
+        line = ProcurementLine.objects.get(order_item__order__order_no=number)
+        supplier = Supplier.objects.create(name="Fournisseur recette marge", status="active")
+        line.supplier = supplier
+        line.unit_cost = 7000
+        line.status = "confirmed"
+        line.save()
+
+        finance = self.client.get(finance_url).json()["finance"]
+        self.assertEqual(finance["supplier_cost"], 14000)
+        self.assertEqual(finance["gross_product_margin"], 10000)
+        self.assertEqual(
+            finance["margin_contribution"],
+            finance["order_total"] - 14000 - 2500 - 150,
+        )
+        self.assertEqual(finance["status"], "provisional")
+
+        replay = self.client.post(
+            finance_url,
+            data=json.dumps({"courier_cost": 2500, "payment_fee": 150,
+                             "other_cost": 0, "reason": "Test initial contrôlé"}),
+            content_type="application/json",
+        )
+        self.assertEqual(replay.status_code, 200, replay.content)
+        self.assertEqual(OrderCostRevision.objects.count(), 1)
+
+        correction = self.client.post(
+            finance_url,
+            data=json.dumps({"courier_cost": 2600, "payment_fee": 150,
+                             "other_cost": 0, "reason": "Correction justifiée"}),
+            content_type="application/json",
+        )
+        self.assertEqual(correction.status_code, 200, correction.content)
+        self.assertEqual(OrderCostRevision.objects.count(), 2)
+        self.assertEqual(OrderCostRevision.objects.first().previous_values["courier_cost"], 2500)
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))
