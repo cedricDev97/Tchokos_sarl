@@ -1,0 +1,106 @@
+/* Carte de suivi indépendante des cartes produits du catalogue. */
+#trackResult .trackingSummaryCard {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: clamp(14px, 2vw, 24px);
+  border: 1px solid #e8e1da;
+  border-radius: 18px;
+  background: #fff;
+  color: #202020;
+}
+#trackResult .trackingSummaryHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 20px;
+}
+#trackResult .trackingSummaryOrderNo {
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+#trackResult .trackingSummaryHeaderState {
+  text-align: right;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+#trackResult .trackingSummaryStatus {
+  display: inline-flex;
+  border: 1px solid #f1c7ab;
+  background: #fff5ec;
+  color: #923a13;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-weight: 700;
+}
+#trackResult .trackingSummaryStatus--ok {
+  border-color: #b8dcc5;
+  background: #f0fbf4;
+  color: #17663b;
+}
+#trackResult .trackingSummaryDivider {
+  height: 1px;
+  background: #eee9e5;
+  margin: 16px 0;
+}
+#trackResult .trackingSummaryCustomer {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+#trackResult .trackingSummaryItems {
+  display: grid;
+  gap: 12px;
+}
+#trackResult .trackingSummaryItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+#trackResult .trackingSummaryItemDetails {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#trackResult .trackingSummaryItemDetails .muted {
+  margin-top: 4px;
+}
+#trackResult .trackingSummaryItemAmount {
+  white-space: nowrap;
+  text-align: right;
+}
+#trackResult .trackingSummaryTotals {
+  display: grid;
+  gap: 10px;
+}
+#trackResult .trackingSummaryAmountRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+#trackResult .trackingSummaryGrandTotal {
+  font-size: 16px;
+  color: #1d1d1d;
+}
+#trackResult .trackingSummaryWhatsApp {
+  margin-top: 16px;
+}
+#trackResult .trackingSummaryWhatsApp .btn {
+  white-space: normal;
+  text-align: center;
+}
+@media (max-width: 520px) {
+  #trackResult .trackingSummaryHeaderState {
+    text-align: left;
+    justify-items: start;
+  }
+  #trackResult .trackingSummaryItem {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+  #trackResult .trackingSummaryItemAmount {
+    text-align: left;
+  }
+}

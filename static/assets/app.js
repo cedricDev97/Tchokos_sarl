@@ -3624,65 +3624,69 @@ async function renderTrackingFromApi(orderNo){
   const data = await res.json();
 
   if(!res.ok || !data.ok){
-    box.innerHTML = `<div class="note">❌ ${data.error || "Commande introuvable."}</div>`;
+    box.innerHTML = `<div class="note">❌ ${escapeHtml(data.error || "Commande introuvable.")}</div>`;
     return;
   }
 
   const o = data.order;
-
-  // fallback si fmtMoney n’existe pas
   const money = (typeof fmtMoney === "function")
     ? fmtMoney
-    : (n)=> `${Number(n||0).toLocaleString()} FCFA`;
+    : (n)=> `${Number(n||0).toLocaleString("fr-CM")} FCFA`;
+  const paymentLabels = {
+    paid: "Payé",
+    pending: "En attente",
+    failed: "Échoué",
+    unpaid: "Non payé"
+  };
+  const paymentLabel = paymentLabels[o.payment_status] || "Non payé";
 
   box.innerHTML = `
-    <div class="card">
-      <div class="row" style="justify-content:space-between; gap:12px;">
+    <div class="trackingSummaryCard">
+      <div class="trackingSummaryHeader">
         <div>
-          <div style="font-weight:800">${o.orderNo}</div>
-          <div class="muted">${new Date(o.createdAt).toLocaleString()}</div>
+          <div class="trackingSummaryOrderNo">${escapeHtml(o.orderNo || "")}</div>
+          <div class="muted">${o.createdAt ? new Date(o.createdAt).toLocaleString("fr-CM") : ""}</div>
         </div>
-        <div>
-          <div class="pill">${escapeHtml(o.status || "")}</div>
-          <div class="muted" style="margin-top:6px">Paiement : ${o.payment_status === "paid" ? "Payé" : o.payment_status === "pending" ? "En attente" : "Non payé"}</div>
+        <div class="trackingSummaryHeaderState">
+          <span class="trackingSummaryStatus ${o.status === "delivered" ? "trackingSummaryStatus--ok" : ""}">${escapeHtml(formatStatusLabel(o.status))}</span>
+          <div class="muted">Paiement : ${escapeHtml(paymentLabel)}</div>
         </div>
       </div>
 
       ${o.whatsapp_url && /^https:\/\/wa\.me\/2376[0-9]{8}\?text=/.test(o.whatsapp_url) ? `
-        <div style="margin:12px 0">
+        <div class="trackingSummaryWhatsApp">
           <a class="btn primary" href="${escapeHtml(o.whatsapp_url)}" target="_blank" rel="noopener noreferrer">
             📲 Reprendre la finalisation sur WhatsApp
           </a>
         </div>` : ""}
 
-      <div class="hr"></div>
+      <div class="trackingSummaryDivider"></div>
+      <div class="trackingSummaryCustomer">
+        <div>${escapeHtml(o.customer?.name || "")}</div>
+        <div class="muted">${escapeHtml(o.customer?.city || "")} / ${escapeHtml(o.customer?.quarter || "")}</div>
+      </div>
+      <div class="trackingSummaryDivider"></div>
 
-      <div class="muted">${escapeHtml(o.customer.name || "")}</div>
-      <div class="muted">${escapeHtml(o.customer.city || "")} / ${escapeHtml(o.customer.quarter || "")}</div>
-
-      <div class="hr"></div>
-
-      <div style="display:flex; flex-direction:column; gap:8px;">
+      <div class="trackingSummaryItems">
         ${(o.items||[]).map(it=>`
-          <div class="row" style="justify-content:space-between;">
-            <div>
-              <div style="font-weight:700">${escapeHtml(it.name || "")}</div>
-              <div class="muted">${escapeHtml(it.sku || "")} • ${it.color ? `Couleur : ${escapeHtml(it.color)} • ` : ""}Option ${escapeHtml(it.size || "")} • x${it.qty}</div>
+          <div class="trackingSummaryItem">
+            <div class="trackingSummaryItemDetails">
+              <strong>${escapeHtml(it.name || "")}</strong>
+              <div class="muted">${escapeHtml(it.sku || "")} • ${it.color ? `Couleur : ${escapeHtml(it.color)} • ` : ""}Option ${escapeHtml(it.size || "")} • x${escapeHtml(String(it.qty ?? ""))}</div>
             </div>
-            <div style="font-weight:800">${money(it.line_total)}</div>
+            <strong class="trackingSummaryItemAmount">${money(it.line_total)}</strong>
           </div>
         `).join("")}
       </div>
-
-      <div class="hr"></div>
-
-      <div class="row" style="justify-content:space-between;"><div class="muted">Sous-total</div><div>${money(o.subtotal)}</div></div>
-      <div class="row" style="justify-content:space-between;"><div class="muted">Livraison</div><div>${money(o.shipping)}</div></div>
-      <div class="row" style="justify-content:space-between;"><div style="font-weight:900">Total</div><div style="font-weight:900">${money(o.total)}</div></div>
+      <div class="trackingSummaryDivider"></div>
+      <div class="trackingSummaryTotals">
+        <div class="trackingSummaryAmountRow"><span>Sous-total</span><span>${money(o.subtotal)}</span></div>
+        <div class="trackingSummaryAmountRow"><span>Livraison</span><span>${money(o.shipping)}</span></div>
+        <div class="trackingSummaryAmountRow trackingSummaryGrandTotal"><strong>Total</strong><strong>${money(o.total)}</strong></div>
+      </div>
     </div>
   `;
 }
-
 
   function getCurrentVariantStock(sku, size){
   return stockOf(sku, normalizeVariantValue(size));
