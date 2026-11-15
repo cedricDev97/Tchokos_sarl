@@ -324,8 +324,15 @@ class CheckoutStabilisationTests(TestCase):
         self.variant.refresh_from_db()
         self.assertEqual(order.status, "cancelled")
         self.assertEqual(self.variant.stock_qty, 7)
-        replay = self.post_order(self.payload(), key="recette_wa_expire_00000001")
-        self.assertEqual(replay.status_code, 409)
+        # L'expiration doit refuser toute relecture de la même clé sans dépendre
+        # d'un appel réseau réel à Turnstile (toutes les requêtes du test sont mockées).
+        with self.cloudflare():
+            replay = self.post_order(self.payload(), key="recette_wa_expire_00000001")
+        self.assertEqual(replay.status_code, 409, replay.content)
+        self.assertEqual(Order.objects.count(), 1)
+        self.assertEqual(CheckoutAttempt.objects.count(), 1)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 7)
 
     @override_settings(EKAKO_CHECKOUT_MODE="whatsapp", EKAKO_WHATSAPP_NUMBER="237699001122", EKAKO_WHATSAPP_RESERVATION_MINUTES=60)
     def test_tracking_recovers_whatsapp_link_after_page_closed(self):
