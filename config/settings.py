@@ -208,11 +208,29 @@ if EKAKO_DB_ENGINE == "sqlite":
 # EKAKO_P0_D_WEB : fichiers statiques collectés pour le serveur WSGI.
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Stockage produit: local par défaut; Cloudinary activé explicitement sur Render.
+EKAKO_MEDIA_STORAGE = os.environ.get("EKAKO_MEDIA_STORAGE", "local").strip().lower()
+if EKAKO_MEDIA_STORAGE not in {"local", "cloudinary"}:
+    raise RuntimeError("EKAKO_MEDIA_STORAGE doit être local ou cloudinary")
+CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "").strip()
+CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "").strip()
+CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "").strip()
+if EKAKO_MEDIA_STORAGE == "cloudinary" and not all(
+    (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
+):
+    raise RuntimeError("Cloudinary: renseigner CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY et CLOUDINARY_API_SECRET")
+
 # Ne pas confondre fichiers statiques et images des produits (MEDIA).
 # MEDIA nécessite un stockage persistant indépendant du serveur web.
 if IS_PRODUCTION:
     STORAGES = {
-        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "default": {
+            "BACKEND": (
+                "config.cloudinary_storage.CloudinaryMediaStorage"
+                if EKAKO_MEDIA_STORAGE == "cloudinary"
+                else "django.core.files.storage.FileSystemStorage"
+            ),
+        },
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
