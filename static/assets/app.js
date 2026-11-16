@@ -157,6 +157,50 @@ function renderOrderFinance(orderNo, response){
         <div><span>Marge brute sur articles</span><strong>${amount(f.gross_product_margin)}</strong></div>
         <div class="financeGrand"><span>Marge contributive ${f.status === "complete" ? "calculée" : "(provisoire ou incomplète)"}</span><strong>${amount(f.margin_contribution)}</strong></div>
       </div>
+      <div class="financeSettlement">
+        <strong>Suivi des règlements</strong>
+        <div class="financeSettlementLine"><span>Fournisseur payé</span><strong>${amount(f.supplier_paid)}</strong></div>
+        <div class="financeSettlementLine"><span>Reste à payer au fournisseur</span><strong>${amount(f.supplier_balance)}</strong></div>
+        <div class="financeSettlementLine"><span>Livreur payé</span><strong>${amount(f.courier_paid)}</strong></div>
+        <div class="financeSettlementLine"><span>Reste à payer au livreur</span><strong>${amount(f.courier_balance)}</strong></div>
+        <p class="muted">Les règlements réduisent les dettes, pas la marge contributive déjà calculée.</p>
+        ${Array.isArray(f.courier_history) && f.courier_history.length ? `
+          <div class="financePayoutHistory">
+            <strong>Historique livreur (20 derniers)</strong>
+            ${f.courier_history.map(p=>`
+              <div class="financePayoutItem">
+                <span>${amount(p.amount)} · ${escapeHtml(p.reference || "")}</span>
+                <span class="muted">${escapeHtml(p.courier_name || "")}</span>
+              </div>
+            `).join("")}
+          </div>` : ""}
+      </div>
+      ${f.courier_balance !== null && f.courier_balance > 0 && f.order_status === "delivered" ? `
+        <div class="financePayoutForm">
+          <strong>Enregistrer un règlement livreur (manuel)</strong>
+          <div class="financeFields">
+            <label class="financeField">Montant FCFA
+              <input class="text" id="courierPayoutAmount" type="number" min="1" step="1" max="${f.courier_balance}" value="${f.courier_balance}">
+            </label>
+            <label class="financeField">Moyen de règlement
+              <select class="select" id="courierPayoutMethod">
+                <option value="cash">Espèces</option>
+                <option value="momo">MTN Mobile Money</option>
+                <option value="om">Orange Money</option>
+                <option value="bank">Virement</option>
+              </select>
+            </label>
+            <label class="financeField">Référence unique du reçu
+              <input class="text" id="courierPayoutReference" autocomplete="off" placeholder="RECETTE-LIVREUR-001">
+            </label>
+          </div>
+          <label class="financeField">Observation
+            <input class="text" id="courierPayoutNote" maxlength="255" placeholder="Versement fictif en base de recette">
+          </label>
+          <p class="muted">N'enregistre un règlement réel qu'après vérification de son justificatif. Cette saisie ne transfère aucun argent.</p>
+          <button type="button" class="btn small primary" onclick="saveCourierPayout('${escapeHtml(orderNo)}')">Enregistrer le règlement livreur</button>
+        </div>
+      ` : ""}
       <div class="financeFields">
         ${field("financeCourierCost","Coût livreur (FCFA)",c.courier_cost)}
         ${field("financePaymentFee","Frais de paiement (FCFA)",c.payment_fee)}
@@ -165,6 +209,35 @@ function renderOrderFinance(orderNo, response){
       <p class="muted">Indique 0 uniquement lorsque le coût est réellement nul. Ces montants sont déclarés manuellement ; aucune transaction n'est effectuée.</p>
       <button type="button" class="btn small primary" onclick="saveOrderFinance('${escapeHtml(orderNo)}')">Enregistrer les coûts</button>
     </div>`;
+}
+
+
+async function saveCourierPayout(orderNo){
+  const raw = (byId("courierPayoutAmount")?.value || "").trim();
+  const amount = Number(raw);
+  const method = byId("courierPayoutMethod")?.value;
+  const reference = (byId("courierPayoutReference")?.value || "").trim();
+  const note = (byId("courierPayoutNote")?.value || "").trim();
+  if(!raw || !Number.isSafeInteger(amount) || amount <= 0){
+    alert("Montant positif entier obligatoire.");
+    return;
+  }
+  if(reference.length < 5 || reference.length > 120){
+    alert("Renseigne une référence unique (5 à 120 caractères).");
+    return;
+  }
+  if(!confirm("As-tu vérifié le reçu du règlement au livreur ? Cette action crée une écriture irréversible dans le journal, sans transférer d'argent.")) return;
+  try{
+    const result = await apiPost(`/api/admin/order/${encodeURIComponent(orderNo)}/courier-payout/`,{
+      amount,method,reference,note,verified:true
+    });
+    if(result.already_recorded){
+      alert("Cette référence a déjà été enregistrée. Aucun doublon n'a été créé.");
+    }
+    await openOrderDetail(orderNo);
+  }catch(err){
+    alert(err?.error || err?.message || "Erreur lors de l'enregistrement du règlement.");
+  }
 }
 
 async function saveOrderFinance(orderNo){

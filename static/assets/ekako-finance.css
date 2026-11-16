@@ -9,3 +9,10 @@
 .orderFinanceCard .financeField input{box-sizing:border-box;width:100%}
 .orderFinanceCard .muted{line-height:1.5}
 @media(max-width:720px){.orderFinanceCard .financeFields,.orderFinanceCard .financeSummaryRows{grid-template-columns:minmax(0,1fr)}}
+
+.orderFinanceCard .financeSettlement,.orderFinanceCard .financePayoutForm{margin:16px 0;padding:14px;border:1px solid #e7e7e7;border-radius:12px}
+.orderFinanceCard .financeSettlementLine{display:flex;gap:15px;justify-content:space-between;margin:10px 0}
+.orderFinanceCard .financeSettlementLine strong{text-align:right}
+.orderFinanceCard .financePayoutHistory{padding-top:10px;border-top:1px solid #eee}
+.orderFinanceCard .financePayoutItem{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;padding:7px 0}
+.orderFinanceCard .financePayoutForm .financeField{margin:10px 0}
