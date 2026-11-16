@@ -236,6 +236,14 @@ if IS_PRODUCTION:
         },
     }
 
+# Une execution locale peut également activer Cloudinary à la demande,
+# sans modifier la configuration locale habituelle.
+if not IS_PRODUCTION and EKAKO_MEDIA_STORAGE == "cloudinary":
+    STORAGES = {
+        "default": {"BACKEND": "config.cloudinary_storage.CloudinaryMediaStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
 # eKAKO stabilisation: activation depuis les variables d'environnement.
 # Mode V1 : les commandes de recette ecrivent dans la base locale et reduisent le stock.
 # Jamais de commande publique avant l'integration et la recette de paiement.
