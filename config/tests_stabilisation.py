@@ -213,3 +213,15 @@ class LogoutCsrfRegressionTests(TestCase):
         self.assertEqual(accepted.status_code, 200)
         self.assertTrue(accepted.json()["ok"])
         self.assertFalse(browser.get("/api/admin/me/").json()["authenticated"])
+
+
+class AdminNavigationVisibilityTests(SimpleTestCase):
+    """Le Dashboard ne doit pas apparaître durant le chargement d'une session visiteur."""
+
+    def test_admin_navigation_is_initially_hidden(self):
+        response = self.client.get("/boutique/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'id="tabAdmin" style="display:none"',
+        )

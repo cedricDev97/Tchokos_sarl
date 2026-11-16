@@ -2191,6 +2191,15 @@ function switchAdminSection(section){
 }
 
 function syncRoleUI(){
+  // Masquage par défaut et affichage uniquement après vérification du rôle serveur.
+  const adminTab = byId("tabAdmin");
+  if(adminTab){
+    const canSeeDashboard = role === "admin";
+    adminTab.style.display = canSeeDashboard ? "" : "none";
+    if(!canSeeDashboard && byId("pageAdmin")?.classList.contains("active")){
+      goTab("shop");
+    }
+  }
   if(byId("roleLabel")){
     byId("roleLabel").textContent =
       role === "visitor" ? "Visiteur" :
@@ -2347,6 +2356,10 @@ function syncRoleUI(){
   function saveOrders(list){ localStorage.setItem(LS.ORDERS, JSON.stringify(list)); }
 
   function goTab(tab){
+    // Un lien interne ou un appel manuel ne doit pas afficher la page admin à un visiteur.
+    if(tab === "admin" && role !== "admin"){
+      tab = "shop";
+    }
     closeEkakoCartDrawer();
     ["tabShop","tabReseller","tabTrack","tabAdmin"].forEach(id=>byId(id).classList.remove("active"));
     byId("tab"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("active");
