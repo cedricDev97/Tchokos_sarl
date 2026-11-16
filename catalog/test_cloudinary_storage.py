@@ -22,7 +22,7 @@ class CloudinaryMediaStorageTests(SimpleTestCase):
     @patch("config.cloudinary_storage.cloudinary.uploader.upload")
     def test_product_upload_stores_cloudinary_name(self, upload_mock):
         upload_mock.return_value = {
-            "public_id": "products/a" * 0 + "products/abc123",
+            "public_id": "products/abc123",
             "format": "jpg",
         }
         name = self.storage.save("products/chaussure.jpg", ContentFile(b"example"))
