@@ -56,6 +56,40 @@ def order_finance_summary(order):
     calculable = supplier_complete and costs_complete
     closed = order.status == "delivered" and order.payment_state == "paid"
     margin = int(order.total) - supplier_cost - sum(costs.values()) if calculable else None
+
+    # Ne jamais confondre une écriture manuelle avec une preuve bancaire.
+    # Les frais de paiement et autres charges n'ont pas encore de journal de règlement.
+    customer_marked_paid = order.payment_state == "paid"
+    customer_recorded_amount = int(order.total) if customer_marked_paid else None
+    partner_disbursements = supplier_paid + courier_paid
+    recorded_liquidity = (
+        customer_recorded_amount - partner_disbursements
+        if customer_marked_paid else None
+    )
+    supplier_settled = supplier_complete and supplier_balance == 0
+    courier_settled = sheet is not None and sheet.courier_cost is not None and courier_balance == 0
+    recorded_partner_settlements_complete = bool(supplier_settled and courier_settled)
+
+    reconciliation = {
+        "client_payment_recorded": customer_marked_paid,
+        "client_amount_recorded": customer_recorded_amount,
+        "supplier_paid": supplier_paid,
+        "courier_paid": courier_paid,
+        "partner_outflows_recorded": partner_disbursements,
+        "liquidity_after_partner_payments": recorded_liquidity,
+        "payment_fee_declared": costs["payment_fee"],
+        "other_cost_declared": costs["other_cost"],
+        "supplier_settled": supplier_settled,
+        "courier_settled": courier_settled,
+        "partner_settlements_complete": recorded_partner_settlements_complete,
+        "operationally_closed": bool(closed and recorded_partner_settlements_complete),
+        "external_cash_reconciled": False,
+        "external_cash_reconciliation_reason": (
+            "Aucun rapprochement avec relevé bancaire ou Mobile Money : "
+            "encaissement manuel et décaissements déclarés, frais de paiement "
+            "et autres charges sans journal de règlement."
+        ),
+    }
     return {
         "order_no": order.order_no,
         "order_status": order.status,
@@ -72,6 +106,7 @@ def order_finance_summary(order):
         "courier_paid": courier_paid,
         "courier_balance": courier_balance,
         "courier_history": courier_history,
+        "reconciliation": reconciliation,
         "costs_complete": costs_complete,
         "margin_contribution": margin,
         "ready_for_closing": bool(calculable and closed),

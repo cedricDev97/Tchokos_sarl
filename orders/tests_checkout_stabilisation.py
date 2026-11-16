@@ -727,6 +727,59 @@ class CheckoutStabilisationTests(TestCase):
         sheet.refresh_from_db()
         self.assertEqual(sheet.courier_cost, 2500)
 
+
+    @override_settings(
+        EKAKO_CHECKOUT_MODE="whatsapp",
+        EKAKO_WHATSAPP_NUMBER="237699001122",
+    )
+    def test_financial_reconciliation_marks_cash_as_unverified(self):
+        """Une clôture opérationnelle ne vaut pas rapprochement bancaire."""
+        from orders.finance import order_finance_summary
+        from orders.models import OrderCostSheet, CourierPayout
+        from sourcing.models import Supplier, ProcurementLine, SupplierPayment, DeliveryTask
+
+        with self.cloudflare():
+            created = self.post_order(self.payload(), key="recette_reconciliation_test_0001")
+        self.assertEqual(created.status_code, 200, created.content)
+        order = Order.objects.get(order_no=created.json()["orderNo"])
+        before = order_finance_summary(order)
+        self.assertFalse(before["reconciliation"]["client_payment_recorded"])
+        self.assertIsNone(before["reconciliation"]["liquidity_after_partner_payments"])
+
+        line = ProcurementLine.objects.get(order_item__order=order)
+        vendor = Supplier.objects.create(name="Fournisseur recette rapprochement", status="active")
+        line.supplier = vendor
+        line.unit_cost = 7000
+        line.status = "collected"
+        line.save()
+        task = DeliveryTask.objects.get(order=order)
+        task.courier_name = "Coursier fictif"
+        task.status = "delivered"
+        task.save()
+        OrderCostSheet.objects.create(order=order,courier_cost=2500,payment_fee=700,other_cost=0)
+        order.payment_state = "paid"
+        order.status = "delivered"
+        order.save(update_fields=["payment_state","status"])
+        SupplierPayment.objects.create(
+            procurement=line, amount=14000, method="cash",
+            reference="RECETTE-FOUR-RECONCILIATION-01"
+        )
+        CourierPayout.objects.create(
+            order=order, courier_name="Coursier fictif",
+            amount=2500, method="cash",
+            reference="RECETTE-COURIER-RECONCILIATION-01",
+        )
+
+        result = order_finance_summary(order)
+        r = result["reconciliation"]
+        self.assertTrue(r["partner_settlements_complete"])
+        self.assertTrue(r["operationally_closed"])
+        self.assertFalse(r["external_cash_reconciled"])
+        self.assertEqual(r["client_amount_recorded"], order.total)
+        self.assertEqual(r["partner_outflows_recorded"], 16500)
+        self.assertEqual(r["liquidity_after_partner_payments"], order.total - 16500)
+        self.assertEqual(result["margin_contribution"], order.total - 14000 - 2500 - 700)
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))

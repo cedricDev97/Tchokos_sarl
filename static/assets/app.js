@@ -201,6 +201,19 @@ function renderOrderFinance(orderNo, response){
           <button type="button" class="btn small primary" onclick="saveCourierPayout('${escapeHtml(orderNo)}')">Enregistrer le règlement livreur</button>
         </div>
       ` : ""}
+      ${f.reconciliation ? `
+        <div class="financeReconciliation">
+          <strong>Rapprochement financier — situation déclarative</strong>
+          <div class="financeSettlementLine"><span>Encaissement client marqué payé</span><strong>${f.reconciliation.client_payment_recorded ? amount(f.reconciliation.client_amount_recorded) : "Non confirmé"}</strong></div>
+          <div class="financeSettlementLine"><span>Règlements fournisseur enregistrés</span><strong>${amount(f.reconciliation.supplier_paid)}</strong></div>
+          <div class="financeSettlementLine"><span>Règlements livreur enregistrés</span><strong>${amount(f.reconciliation.courier_paid)}</strong></div>
+          <div class="financeSettlementLine"><span>Solde de flux déclarés, hors frais non rapprochés</span><strong>${amount(f.reconciliation.liquidity_after_partner_payments)}</strong></div>
+          <div class="financeSettlementLine"><span>Frais de paiement comptabilisés</span><strong>${amount(f.reconciliation.payment_fee_declared)}</strong></div>
+          <div class="financeSettlementLine"><span>Autres frais comptabilisés</span><strong>${amount(f.reconciliation.other_cost_declared)}</strong></div>
+          <p class="financeReconciliationState">${f.reconciliation.operationally_closed ? "✅ Commande et dettes partenaires clôturées dans eKAKO" : "⏳ Clôture opérationnelle ou règlements partenaires incomplets"}</p>
+          <p class="muted">Non rapproché avec un relevé : ces sommes correspondent à des enregistrements manuels. Les frais déclarés ne sont pas une preuve de débit effectif et le solde affiché n'est pas un solde bancaire. Vérifier les reçus et relevés hors application avant toute clôture de trésorerie.</p>
+        </div>
+      ` : ""}
       <div class="financeFields">
         ${field("financeCourierCost","Coût livreur (FCFA)",c.courier_cost)}
         ${field("financePaymentFee","Frais de paiement (FCFA)",c.payment_fee)}
