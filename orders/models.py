@@ -172,3 +172,24 @@ class OrderCostRevision(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+class CourierPayout(models.Model):
+    """Journal immuable de règlements manuels aux livreurs partenaires."""
+    METHODS = [
+        ("cash", "Espèces"), ("momo", "MTN MoMo"),
+        ("om", "Orange Money"), ("bank", "Virement"),
+    ]
+    order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, related_name="courier_payouts")
+    courier_name = models.CharField(max_length=120)
+    amount = models.PositiveIntegerField("Montant versé FCFA")
+    method = models.CharField(max_length=10, choices=METHODS)
+    reference = models.CharField(max_length=120, unique=True)
+    note = models.CharField(max_length=255, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-recorded_at"]
+
+    def __str__(self):
+        return f"{self.order.order_no} · {self.amount} FCFA · {self.reference}"

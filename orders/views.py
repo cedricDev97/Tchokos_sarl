@@ -1268,7 +1268,7 @@ def reseller_top_products_api(request):
 @require_http_methods(["GET", "POST"])
 def admin_order_finance_api(request, order_no: str):
     """Lecture ou saisie auditée des dépenses variables. Jamais un encaissement."""
-    from .models import OrderCostSheet, OrderCostRevision
+    from .models import OrderCostSheet, OrderCostRevision, CourierPayout
     from .finance import COST_FIELDS, order_finance_summary
 
     if request.method == "GET":
@@ -1308,6 +1308,14 @@ def admin_order_finance_api(request, order_no: str):
             key: getattr(sheet, key) if sheet is not None else None
             for key in COST_FIELDS
         }
+        total_paid_to_courier = CourierPayout.objects.filter(order=order).aggregate(
+            total=Sum("amount")
+        )["total"] or 0
+        if values["courier_cost"] < total_paid_to_courier:
+            return JsonResponse({
+                "ok": False,
+                "error": "Coût livreur inférieur aux règlements déjà enregistrés. Procédure de correction nécessaire.",
+            }, status=409)
         if previous != values:
             if sheet is None:
                 OrderCostSheet.objects.create(order=order, updated_by=request.user, **values)
@@ -1322,3 +1330,95 @@ def admin_order_finance_api(request, order_no: str):
             )
         result = order_finance_summary(order)
     return JsonResponse({"ok": True, "finance": result})
+
+
+@user_passes_test(can_manage_payments)
+@require_POST
+def admin_courier_payout_api(request, order_no: str):
+    """Enregistrement MANUEL vérifié : ne déclenche aucun paiement bancaire ou Mobile Money."""
+    from django.db import IntegrityError
+    from .models import CourierPayout, OrderCostSheet
+    from .finance import order_finance_summary
+    from sourcing.models import DeliveryTask
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "JSON invalide."}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Requête invalide."}, status=400)
+
+    amount = payload.get("amount")
+    method = payload.get("method")
+    reference = payload.get("reference")
+    note = payload.get("note", "")
+    verified = payload.get("verified")
+    if type(amount) is not int or not (1 <= amount <= 100000000):
+        return JsonResponse({"ok": False, "error": "Montant entier positif obligatoire."}, status=400)
+    if method not in {"cash", "momo", "om", "bank"}:
+        return JsonResponse({"ok": False, "error": "Moyen de règlement invalide."}, status=400)
+    if not isinstance(reference, str) or not (5 <= len(reference.strip()) <= 120):
+        return JsonResponse({"ok": False, "error": "Référence de règlement obligatoire (5 à 120 caractères)."}, status=400)
+    if not isinstance(note, str) or len(note) > 255:
+        return JsonResponse({"ok": False, "error": "Observation invalide (255 caractères maximum)."}, status=400)
+    if verified is not True:
+        return JsonResponse({"ok": False, "error": "La vérification du règlement doit être confirmée."}, status=400)
+    reference = reference.strip()
+    note = note.strip()
+    order_no = (order_no or "").strip()
+
+    try:
+        with transaction.atomic():
+            try:
+                order = Order.objects.select_for_update().get(order_no__iexact=order_no)
+            except Order.DoesNotExist:
+                return JsonResponse({"ok": False, "error": "Commande introuvable."}, status=404)
+
+            task = DeliveryTask.objects.select_for_update().filter(order=order).first()
+            sheet = OrderCostSheet.objects.select_for_update().filter(order=order).first()
+
+            # La référence unique constitue la clé d'idempotence de ce décaissement.
+            existing = CourierPayout.objects.filter(reference=reference).first()
+            if existing:
+                same = (existing.order_id == order.id and existing.amount == amount
+                        and existing.method == method and existing.note == note
+                        and task is not None and existing.courier_name == task.courier_name)
+                if not same:
+                    return JsonResponse({
+                        "ok": False, "error": "Référence déjà utilisée pour un autre règlement."
+                    }, status=409)
+                return JsonResponse({
+                    "ok": True, "already_recorded": True,
+                    "finance": order_finance_summary(order),
+                })
+
+            if order.status != "delivered" or task is None or task.status != "delivered":
+                return JsonResponse({
+                    "ok": False, "error": "La livraison doit être confirmée avant le règlement livreur."
+                }, status=409)
+            if not task.courier_name.strip():
+                return JsonResponse({"ok": False, "error": "Livreur non identifié."}, status=409)
+            if sheet is None or sheet.courier_cost is None:
+                return JsonResponse({"ok": False, "error": "Renseigne d'abord le coût du livreur."}, status=409)
+
+            already_paid = CourierPayout.objects.filter(order=order).aggregate(
+                total=Sum("amount")
+            )["total"] or 0
+            if already_paid + amount > sheet.courier_cost:
+                return JsonResponse({
+                    "ok": False, "error": "Ce règlement dépasse le solde dû au livreur."
+                }, status=409)
+            payout = CourierPayout.objects.create(
+                order=order, courier_name=task.courier_name.strip(),
+                amount=amount, method=method, reference=reference,
+                note=note, recorded_by=request.user,
+            )
+            return JsonResponse({
+                "ok": True, "already_recorded": False,
+                "payout_id": payout.pk,
+                "finance": order_finance_summary(order),
+            })
+    except IntegrityError:
+        return JsonResponse({
+            "ok": False, "error": "Référence déjà enregistrée par une autre opération. Actualise la page."
+        }, status=409)

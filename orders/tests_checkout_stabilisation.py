@@ -628,6 +628,105 @@ class CheckoutStabilisationTests(TestCase):
         self.assertEqual(OrderCostRevision.objects.count(), 2)
         self.assertEqual(OrderCostRevision.objects.first().previous_values["courier_cost"], 2500)
 
+
+    @override_settings(
+        EKAKO_CHECKOUT_MODE="whatsapp",
+        EKAKO_WHATSAPP_NUMBER="237699001122",
+    )
+    def test_courier_payout_partial_idempotent_and_no_double_expense(self):
+        """Le solde livreur suit les règlements sans recalculer deux fois les coûts."""
+        from orders.models import CourierPayout, OrderCostSheet
+        from sourcing.models import DeliveryTask, Supplier, ProcurementLine
+
+        with self.cloudflare():
+            response = self.post_order(
+                self.payload(), key="recette_courier_payout_test_0001"
+            )
+        self.assertEqual(response.status_code, 200, response.content)
+        number = response.json()["orderNo"]
+        order = Order.objects.get(order_no=number)
+        url = reverse("admin_courier_payout_api", kwargs={"order_no": number})
+        finance_url = reverse("admin_order_finance_api", kwargs={"order_no": number})
+        first = {"amount": 1000, "method": "cash",
+                 "reference": "RECETTE-LIVREUR-TEST-001",
+                 "note": "Acompte fictif", "verified": True}
+        self.client.force_login(self.reseller)
+        forbidden = self.client.post(url, data=json.dumps(first),
+                                     content_type="application/json")
+        self.assertNotEqual(forbidden.status_code, 200)
+
+        admin = get_user_model().objects.create_superuser(
+            username="ekako_courier_payout_admin", email="courier@example.test",
+            password="SafePass123!zzz",
+        )
+        self.client.force_login(admin)
+        no_cost = self.client.post(url, data=json.dumps(first),
+                                   content_type="application/json")
+        self.assertEqual(no_cost.status_code, 409)
+        self.assertEqual(CourierPayout.objects.count(), 0)
+
+        sheet = OrderCostSheet.objects.create(
+            order=order, courier_cost=2500, payment_fee=700, other_cost=0
+        )
+        before_delivery = self.client.post(url, data=json.dumps(first),
+                                           content_type="application/json")
+        self.assertEqual(before_delivery.status_code, 409)
+
+        line = ProcurementLine.objects.get(order_item__order=order)
+        supplier = Supplier.objects.create(name="RECETTE Fournisseur coursier", status="active")
+        line.supplier = supplier
+        line.unit_cost = 7000
+        line.status = "collected"
+        line.save()
+        task = DeliveryTask.objects.get(order=order)
+        task.courier_name = "Livreur fictif"
+        task.status = "delivered"
+        task.save()
+        order.status = "delivered"
+        order.payment_state = "paid"
+        order.save(update_fields=["status", "payment_state"])
+
+        baseline = self.client.get(finance_url).json()["finance"]["margin_contribution"]
+        self.assertIsNotNone(baseline)
+        initial = self.client.post(url, data=json.dumps(first),
+                                   content_type="application/json")
+        self.assertEqual(initial.status_code, 200, initial.content)
+        self.assertEqual(initial.json()["finance"]["courier_paid"], 1000)
+        self.assertEqual(initial.json()["finance"]["courier_balance"], 1500)
+        self.assertEqual(initial.json()["finance"]["margin_contribution"], baseline)
+        self.assertEqual(CourierPayout.objects.count(), 1)
+
+        replay = self.client.post(url, data=json.dumps(first),
+                                  content_type="application/json")
+        self.assertEqual(replay.status_code, 200, replay.content)
+        self.assertTrue(replay.json()["already_recorded"])
+        self.assertEqual(CourierPayout.objects.count(), 1)
+
+        altered = dict(first, amount=1100)
+        conflict = self.client.post(url, data=json.dumps(altered),
+                                    content_type="application/json")
+        self.assertEqual(conflict.status_code, 409)
+        excess = dict(first, amount=1501, reference="RECETTE-LIVREUR-TEST-002")
+        overpay = self.client.post(url, data=json.dumps(excess),
+                                   content_type="application/json")
+        self.assertEqual(overpay.status_code, 409)
+
+        second = dict(first, amount=1500, reference="RECETTE-LIVREUR-TEST-003")
+        complete = self.client.post(url, data=json.dumps(second),
+                                    content_type="application/json")
+        self.assertEqual(complete.status_code, 200, complete.content)
+        self.assertEqual(complete.json()["finance"]["courier_balance"], 0)
+        self.assertEqual(complete.json()["finance"]["margin_contribution"], baseline)
+        self.assertEqual(CourierPayout.objects.count(), 2)
+
+        reduced = self.client.post(finance_url, data=json.dumps({
+            "courier_cost": 2499, "payment_fee": 700,
+            "other_cost": 0, "reason": "Rebaissement du coût",
+        }), content_type="application/json")
+        self.assertEqual(reduced.status_code, 409, reduced.content)
+        sheet.refresh_from_db()
+        self.assertEqual(sheet.courier_cost, 2500)
+
     def test_insufficient_stock_rejected(self):
         with self.cloudflare():
             response = self.post_order(self.payload(qty=8))
