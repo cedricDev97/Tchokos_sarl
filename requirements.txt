@@ -6,3 +6,4 @@ psycopg==3.3.8
 psycopg-binary==3.3.8
 gunicorn==26.2.0
 whitenoise==6.12.0
+cloudinary==1.47.0
