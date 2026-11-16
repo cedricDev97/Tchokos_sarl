@@ -225,3 +225,24 @@ class AdminNavigationVisibilityTests(SimpleTestCase):
             response,
             'id="tabAdmin" style="display:none"',
         )
+
+
+class ReadinessProbeTests(TestCase):
+    """Le contrôle d'intégrité Render ne dépend pas du mode commande."""
+
+    def test_healthy_database_returns_200(self):
+        response = self.client.get("/healthz/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"ok")
+
+    @override_settings(EKAKO_MAINTENANCE=True)
+    def test_maintenance_does_not_block_readiness_probe(self):
+        response = self.client.get("/healthz/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_database_unavailable_returns_503_without_details(self):
+        from django.db import DatabaseError
+        with patch("config.health.connection.cursor", side_effect=DatabaseError("PRIVATE DB ERROR")):
+            response = self.client.get("/healthz/")
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn(b"PRIVATE", response.content)

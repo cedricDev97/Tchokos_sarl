@@ -11,6 +11,8 @@ class EkakoMaintenanceMiddleware:
         if not settings.EKAKO_MAINTENANCE:
             return self.get_response(request)
         path = request.path_info
+        if path == "/healthz/":
+            return self.get_response(request)
         if path.startswith(("/admin/", "/static/", "/media/")) or path == "/admin":
             return self.get_response(request)
         if path in ("/api/admin/login/", "/api/admin/logout/", "/api/admin/me/"):

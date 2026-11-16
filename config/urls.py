@@ -1,4 +1,5 @@
 from django.contrib import admin
+from config.health import readiness
 from django.urls import path, include
 from storefront.views import home, boutique
 from django.conf import settings
@@ -10,6 +11,7 @@ handler404 = 'config.error_views.page_not_found'
 handler500 = 'config.error_views.server_error'
 
 urlpatterns = [
+    path("healthz/", readiness, name="healthz"),
     path("admin/", admin.site.urls),
     path("", home, name="home"),
     path("boutique/", boutique, name="boutique"),
