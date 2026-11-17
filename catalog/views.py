@@ -163,6 +163,7 @@ def _validate_gallery_image(upload):
 @user_passes_test(can_manage_inventory)
 @require_POST
 def admin_save_product_api(request):
+    request._ekako_product_save_stage = "form_validation"
     data = request.POST
 
     old_sku = (data.get("old_sku") or "").strip()
@@ -210,6 +211,7 @@ def admin_save_product_api(request):
     ).exclude(sku__iexact=old_sku).exists():
         return JsonResponse({"ok": False, "error": "Cette couleur existe déjà pour ce groupe."}, status=400)
 
+    request._ekako_product_save_stage = "database_transaction"
     with transaction.atomic():
         if old_sku:
             product = (
@@ -250,6 +252,7 @@ def admin_save_product_api(request):
         if image:
             product.image = image
 
+        request._ekako_product_save_stage = "primary_product_and_image_save"
         try:
             product.save()
         except IntegrityError:
@@ -259,11 +262,13 @@ def admin_save_product_api(request):
         if existing_gallery + len(gallery_uploads) > 8:
             return JsonResponse({"ok": False, "error": "8 photos secondaires maximum par produit."}, status=400)
 
+        request._ekako_product_save_stage = "gallery_images_save"
         for offset, photo in enumerate(gallery_uploads):
             ProductGalleryImage.objects.create(
                 product=product, image=photo, position=existing_gallery + offset
             )
 
+        request._ekako_product_save_stage = "variant_stock_save"
         submitted_size_ids = set()
 
         for row in variants:
@@ -283,6 +288,7 @@ def admin_save_product_api(request):
         if old_sku and submitted_size_ids:
             product.variants.exclude(size_id__in=submitted_size_ids).update(stock_qty=0)
 
+    request._ekako_product_save_stage = "response_payload"
     product = Product.objects.prefetch_related("variants__size", "gallery_images").get(pk=product.pk)
 
     return JsonResponse({

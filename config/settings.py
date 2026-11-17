@@ -93,6 +93,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'config.middleware.EkakoMaintenanceMiddleware',
+    'config.middleware.ProductSaveDiagnosticMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -301,3 +302,25 @@ if IS_PRODUCTION:
             or EKAKO_TURNSTILE_SECRET_KEY in _turnstile_test_secret_keys):
         raise RuntimeError("Clés de test Turnstile interdites en production")
 
+
+
+# Journal ciblé d'incidents d'enregistrement du catalogue sur Render.
+# Les messages n'incluent que l'étape, le type et les localisations de code.
+# Le handler console va vers stderr, capté par les logs du service Web.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "ekako_console": {
+            "class": "logging.StreamHandler",
+            "level": "ERROR",
+        },
+    },
+    "loggers": {
+        "ekako.product_save": {
+            "handlers": ["ekako_console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
