@@ -377,6 +377,20 @@ def checkout_response(order, idempotent=False):
 @require_POST
 def track_api(request, order_no: str):
     import hmac
+    from .track_throttle import (
+        tracking_retry_after, record_failed_tracking, clear_successful_tracking,
+    )
+
+    retry_after = tracking_retry_after(request, order_no)
+    if retry_after:
+        response = JsonResponse({
+            "ok": False,
+            "error": "Trop de tentatives. Réessayez dans quelques minutes.",
+            "retry_after": retry_after,
+        }, status=429)
+        response["Retry-After"] = str(retry_after)
+        response["Cache-Control"] = "no-store"
+        return response
 
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
@@ -388,11 +402,13 @@ def track_api(request, order_no: str):
     supplied_raw = str(payload.get("phone") or "")
     supplied = "".join(ch for ch in supplied_raw if ch.isascii() and ch.isdigit())
     if len(supplied) < 8:
-        return JsonResponse({"ok": False, "error": "Indique le téléphone associé à ta commande."}, status=400)
+        record_failed_tracking(request, order_no)
+        return JsonResponse({"ok": False, "error": "Indique un numéro de téléphone valide."}, status=400)
 
     try:
         o = Order.objects.prefetch_related("items").get(order_no=order_no)
     except Order.DoesNotExist:
+        record_failed_tracking(request, order_no)
         return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
 
     expected = "".join(ch for ch in str(o.customer_phone or "") if ch.isascii() and ch.isdigit())
@@ -403,8 +419,10 @@ def track_api(request, order_no: str):
              if entered_mobile and saved_mobile
              else hmac.compare_digest(supplied, expected))
     if not valid:
+        record_failed_tracking(request, order_no)
         return JsonResponse({"ok": False, "error": "Commande introuvable pour ces informations."}, status=404)
 
+    clear_successful_tracking(request, order_no)
     whatsapp_url = None
     if (o.checkout_channel == "whatsapp" and o.status == "received"
             and o.payment_state != "paid" and o.reservation_expires_at
