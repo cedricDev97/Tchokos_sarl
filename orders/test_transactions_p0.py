@@ -58,11 +58,44 @@ class TransactionP0Tests(TestCase):
         self.variant.refresh_from_db()
         self.assertEqual(self.variant.stock_qty, 2)
 
-    @override_settings(IS_PRODUCTION=True)
+    @override_settings(
+        IS_PRODUCTION=True,
+        EKAKO_CHECKOUT_MODE="whatsapp",
+        EKAKO_WHATSAPP_NUMBER="237699001122",
+        EKAKO_TURNSTILE_ENABLED=False,
+    )
     def test_production_requires_idempotency_key(self):
-        r = self.client.post(reverse("checkout_api"), data=json.dumps(self.payload()), content_type="application/json")
-        self.assertEqual(r.status_code, 400)
+        # La vérification doit atteindre le contrôle d'idempotence :
+        # sandbox est interdit en production et serait rejeté avant (503).
+        r = self.client.post(
+            reverse("checkout_api"),
+            data=json.dumps(self.payload()),
+            content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("Clé de commande manquante", r.json()["error"])
         self.assertEqual(Order.objects.count(), 0)
+        self.assertEqual(CheckoutAttempt.objects.count(), 0)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 3)
+
+    @override_settings(
+        IS_PRODUCTION=True,
+        EKAKO_CHECKOUT_MODE="sandbox",
+        EKAKO_TURNSTILE_ENABLED=False,
+    )
+    def test_production_sandbox_checkout_remains_closed(self):
+        r = self.client.post(
+            reverse("checkout_api"),
+            data=json.dumps(self.payload()),
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY="test-sandbox-production-0001",
+        )
+        self.assertEqual(r.status_code, 503, r.content)
+        self.assertEqual(Order.objects.count(), 0)
+        self.assertEqual(CheckoutAttempt.objects.count(), 0)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock_qty, 3)
 
     def test_cannot_prepare_before_supplier_confirmation(self):
         r = self.checkout("ekako-p0-prepare-000001")
