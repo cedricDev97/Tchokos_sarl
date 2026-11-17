@@ -66,3 +66,57 @@ class ProductSaveDiagnosticMiddleware:
             stage, type(exception).__name__, location,
         )
         return None
+
+
+class DjangoAdminLoginThrottleMiddleware:
+    """Limite les échecs sur /admin/login/ avec les compteurs SQL existants.
+
+    L'état est partagé via PostgreSQL entre les instances Render.
+    Les tentatives CSRF refusées (403) ne sont pas comptées comme
+    échecs de mot de passe. Aucun identifiant en clair n'est journalisé.
+    """
+
+    LOGIN_PATH = "/admin/login/"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.method != "POST" or request.path_info != self.LOGIN_PATH:
+            return self.get_response(request)
+
+        from django.http import HttpResponse
+        from accounts.login_throttle import (
+            clear_successful_login,
+            login_retry_after,
+            record_failed_login,
+        )
+
+        username = (request.POST.get("username") or "").strip()
+        password = request.POST.get("password") or ""
+        # Ne jamais enregistrer les données du formulaire ou le mot de passe.
+        if not username or not password:
+            return self.get_response(request)
+
+        throttle_identity = "django-admin:" + username
+        retry_after = login_retry_after(request, throttle_identity)
+        if retry_after:
+            response = HttpResponse(
+                "Trop de tentatives de connexion. Réessayez plus tard.",
+                status=429,
+                content_type="text/plain; charset=utf-8",
+            )
+            response["Retry-After"] = str(retry_after)
+            response["Cache-Control"] = "no-store"
+            return response
+
+        response = self.get_response(request)
+        # Django Admin LoginView : formulaire invalide = HTTP 200 ;
+        # authentification réussie = redirection + utilisateur authentifié.
+        if (response.status_code in (301, 302, 303)
+                and request.user.is_authenticated and request.user.is_staff
+                and request.user.is_active):
+            clear_successful_login(request, throttle_identity)
+        elif response.status_code == 200 and not request.user.is_authenticated:
+            record_failed_login(request, throttle_identity)
+        return response
