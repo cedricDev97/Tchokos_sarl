@@ -11,7 +11,6 @@ from .views import (
 urlpatterns = [
     path("products/", products_api, name="products_api"),
     path("admin/products/", admin_products_api, name="admin_products_api"),
-    path("admin/cloudinary-audit/", views.admin_cloudinary_audit_api, name="admin_cloudinary_audit_api"),
     path("admin/products/save/", admin_save_product_api, name="admin_save_product_api"),
     path("admin/gallery-image/<int:image_id>/delete/",
          views.admin_delete_gallery_image_api, name="admin_delete_gallery_image_api"),
