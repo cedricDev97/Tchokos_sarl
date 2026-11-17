@@ -76,8 +76,18 @@ class AuditCloudinaryImagesTests(TestCase):
     @patch("config.cloudinary_storage.cloudinary.config")
     @patch("cloudinary.api.resource")
     def test_limit_bounds_remote_checks(self, resource, _):
+        # La limite compte les références inspectées, y compris celles
+        # invalides et rejetées AVANT tout appel réseau.
+        # Tri des SKU : AUDIT-BAD, AUDIT-MISSING, AUDIT-OK.
         resource.return_value = {}
         stdout = StringIO()
         call_command("audit_cloudinary_images", limit=1, stdout=stdout)
         self.assertIn("références=1", stdout.getvalue())
-        self.assertEqual(resource.call_count, 1)
+        self.assertIn("REFERENCE_INVALIDE | SKU=AUDIT-BAD", stdout.getvalue())
+        self.assertEqual(resource.call_count, 0)
+
+        stdout = StringIO()
+        resource.reset_mock()
+        call_command("audit_cloudinary_images", limit=2, stdout=stdout)
+        self.assertIn("références=2", stdout.getvalue())
+        resource.assert_called_once_with("products/legacy", resource_type="image")
