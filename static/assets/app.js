@@ -5143,7 +5143,6 @@ byId("catFilter")?.addEventListener("change", (e) => {
       if(t) byId("trackInput").value = t.trim();
     }catch(e){ alert("Collage bloque."); }
   });
-  byId("resetDemoBtn")?.addEventListener("click", resetDemo);
 
   byId("dashRange")?.addEventListener("change", ()=> renderDashboard());
   byId("paymentFilter")?.addEventListener("change", ()=> {
@@ -5161,7 +5160,6 @@ byId("orderSearch")?.addEventListener("input", ()=> {
   renderOrdersAdminTable(adminOrdersCache);
 });
 byId("refreshDashBtn")?.addEventListener("click", ()=> renderDashboard());
-byId("seedDemoBtn")?.addEventListener("click", seedDemoOrders);
 byId("exportCsvBtn")?.addEventListener("click", exportCsv);
 byId("refreshAdminBtn")?.addEventListener("click", renderDashboard);
 byId("ordersTable")?.addEventListener("click", async (e) => {
