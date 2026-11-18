@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from .models import Order
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
+from accounts.api_permissions import api_permission_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from orders.models import Order, OrderItem, OrderStatusLog, PaymentStatusLog, CheckoutAttempt, CODCollection
@@ -468,7 +469,8 @@ def track_api(request, order_no: str):
     })
 
 
-@user_passes_test(can_manage_orders)
+@api_permission_required(can_manage_orders)
+@require_http_methods(["GET"])
 def admin_stats_api(request):
     days_raw = request.GET.get("days", "7")  # "ALL" ou "7" ou "30"
     qs = Order.objects.all()
@@ -491,7 +493,8 @@ def admin_stats_api(request):
     })
 
 
-@user_passes_test(can_view_orders)
+@api_permission_required(can_view_orders)
+@require_http_methods(["GET"])
 def admin_orders_api(request):
     # derniers 50
     qs = Order.objects.order_by("-created_at")[:50]
@@ -551,7 +554,7 @@ def restock_order(order: Order):
         v.save(update_fields=["stock_qty"])
 
 
-@user_passes_test(can_manage_orders)
+@api_permission_required(can_manage_orders)
 @require_POST
 def admin_update_status_api(request, order_no: str):
     """Transition atomique ; le stock n'est restitué qu'une seule fois."""
@@ -667,7 +670,8 @@ def admin_update_status_api(request, order_no: str):
 
     return JsonResponse({"ok": True, "orderNo": order.order_no, "status": new_status})
 
-@user_passes_test(can_manage_orders)
+@api_permission_required(can_manage_orders)
+@require_http_methods(["GET"])
 def admin_analytics_api(request):
     days_raw = request.GET.get("days", "7")  # ALL/7/30
     qs_orders = Order.objects.all()
@@ -698,7 +702,8 @@ def admin_analytics_api(request):
         "revenue_by_zone": list(zones),
     })
 
-@user_passes_test(can_manage_inventory)
+@api_permission_required(can_manage_inventory)
+@require_http_methods(["GET"])
 def admin_inventory_api(request):
     qs = (Variant.objects
           .select_related("product", "size")
@@ -717,7 +722,7 @@ def admin_inventory_api(request):
 
     return JsonResponse({"ok": True, "results": list(rows.values())})
 
-@user_passes_test(can_manage_inventory)
+@api_permission_required(can_manage_inventory)
 @require_POST
 def admin_adjust_stock_api(request):
     try:
@@ -802,7 +807,8 @@ def logout_api(request):
     logout(request)
     return JsonResponse({"ok": True})
 
-@user_passes_test(can_view_orders)
+@api_permission_required(can_view_orders)
+@require_http_methods(["GET"])
 def admin_order_timeline_api(request, order_no: str):
     try:
         o = Order.objects.get(order_no=order_no)
@@ -824,7 +830,8 @@ def admin_order_timeline_api(request, order_no: str):
         ]
     })
 
-@user_passes_test(can_view_orders)
+@api_permission_required(can_view_orders)
+@require_http_methods(["GET"])
 def admin_order_detail_api(request, order_no: str):
     try:
         o = Order.objects.prefetch_related("items").get(order_no=order_no)
@@ -870,7 +877,7 @@ def admin_order_detail_api(request, order_no: str):
 
 
 
-@user_passes_test(can_manage_orders)
+@api_permission_required(can_manage_orders)
 @require_POST
 def admin_cod_collect_api(request, order_no: str):
     """Déclaration manuelle COD, traçable et idempotente ; aucune monnaie transmise."""
@@ -941,7 +948,7 @@ def admin_cod_collect_api(request, order_no: str):
     return JsonResponse({"ok": True, "orderNo": order.order_no,
                          "reference": reference, "amount": amount})
 
-@user_passes_test(can_manage_payments)
+@api_permission_required(can_manage_payments)
 @require_POST
 def admin_confirm_whatsapp_payment_method_api(request, order_no: str):
     """Choix du paiement confirme avec le client via WhatsApp (pas un encaissement)."""
@@ -987,7 +994,7 @@ def admin_confirm_whatsapp_payment_method_api(request, order_no: str):
 
 ALLOWED_PAYMENT_STATUSES = {"unpaid", "pending", "paid", "failed"}
 
-@user_passes_test(can_manage_payments)
+@api_permission_required(can_manage_payments)
 @require_POST
 def admin_update_payment_status_api(request, order_no: str):
     """Validation manuelle auditée ; ne constitue PAS une vérification API MoMo."""
@@ -1282,7 +1289,7 @@ def reseller_top_products_api(request):
 # Create your views here.
 
 
-@user_passes_test(can_manage_payments)
+@api_permission_required(can_manage_payments)
 @require_http_methods(["GET", "POST"])
 def admin_order_finance_api(request, order_no: str):
     """Lecture ou saisie auditée des dépenses variables. Jamais un encaissement."""
@@ -1350,7 +1357,7 @@ def admin_order_finance_api(request, order_no: str):
     return JsonResponse({"ok": True, "finance": result})
 
 
-@user_passes_test(can_manage_payments)
+@api_permission_required(can_manage_payments)
 @require_POST
 def admin_courier_payout_api(request, order_no: str):
     """Enregistrement MANUEL vérifié : ne déclenche aucun paiement bancaire ou Mobile Money."""

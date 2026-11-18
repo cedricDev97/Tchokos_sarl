@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.decorators import user_passes_test
+from accounts.api_permissions import api_permission_required
 
 from accounts.permissions import can_manage_inventory
 from .models import Product, Size, Variant, ProductGalleryImage
@@ -59,7 +60,7 @@ def products_api(request):
     })
 
 
-@user_passes_test(can_manage_inventory)
+@api_permission_required(can_manage_inventory)
 @require_http_methods(["GET"])
 def admin_products_api(request):
     q = (request.GET.get("q") or "").strip()
@@ -160,7 +161,7 @@ def _validate_gallery_image(upload):
     finally:
         upload.seek(0)
 
-@user_passes_test(can_manage_inventory)
+@api_permission_required(can_manage_inventory)
 @require_POST
 def admin_save_product_api(request):
     request._ekako_product_save_stage = "form_validation"
@@ -297,7 +298,7 @@ def admin_save_product_api(request):
     })
 
 
-@user_passes_test(can_manage_inventory)
+@api_permission_required(can_manage_inventory)
 @require_POST
 def admin_toggle_product_api(request, sku):
     product = Product.objects.filter(sku__iexact=(sku or "").strip()).first()
@@ -324,7 +325,7 @@ def admin_toggle_product_api(request, sku):
     })
 
 # eKAKO_GALERIE_V1 — suppression réservée au gestionnaire de stock
-@user_passes_test(can_manage_inventory)
+@api_permission_required(can_manage_inventory)
 @require_POST
 def admin_delete_gallery_image_api(request, image_id: int):
     image = ProductGalleryImage.objects.filter(pk=image_id).first()

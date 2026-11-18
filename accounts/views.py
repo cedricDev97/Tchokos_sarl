@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from accounts.api_permissions import api_permission_required
 from django.contrib.auth.models import Group, User
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
@@ -215,7 +216,7 @@ def reseller_apply_api(request):
 
     return JsonResponse({"ok": True, "status": app.status})
 
-@user_passes_test(can_manage_resellers)
+@api_permission_required(can_manage_resellers)
 @login_required
 @require_http_methods(["GET"])
 def admin_reseller_applications_api(request):
@@ -246,7 +247,7 @@ def admin_reseller_applications_api(request):
 
     return JsonResponse({"ok": True, "results": results})
 
-@user_passes_test(can_manage_resellers)
+@api_permission_required(can_manage_resellers)
 @login_required
 @csrf_protect
 @require_http_methods(["POST"])
@@ -268,7 +269,7 @@ def admin_approve_reseller_api(request, app_id: int):
 
     return JsonResponse({"ok": True, "status": a.status, "username": a.user.username})
 
-@user_passes_test(can_manage_resellers)
+@api_permission_required(can_manage_resellers)
 @login_required
 @csrf_protect
 @require_http_methods(["POST"])
