@@ -275,6 +275,17 @@ if IS_PRODUCTION and EKAKO_CHECKOUT_MODE == "whatsapp":
     if os.environ.get("EKAKO_WHATSAPP_EXPIRATION_JOB_READY", "") != "1":
         raise RuntimeError("Configurer le cron expire_whatsapp_reservations avant l'ouverture du Checkout WhatsApp")
 
+# Adresse client utilisée UNIQUEMENT pour l'anti-abus.
+# Valeur par défaut conservatrice. N'activer Cloudflare que sur Render
+# après vérification de la confiance dans le reverse proxy.
+EKAKO_CLIENT_IP_SOURCE = os.environ.get("EKAKO_CLIENT_IP_SOURCE", "remote").strip().lower()
+if EKAKO_CLIENT_IP_SOURCE not in {"remote", "cloudflare"}:
+    raise RuntimeError("EKAKO_CLIENT_IP_SOURCE doit être remote ou cloudflare")
+if EKAKO_CLIENT_IP_SOURCE == "cloudflare" and (
+    not IS_PRODUCTION or not os.environ.get("RENDER_SERVICE_ID", "").strip()
+):
+    raise RuntimeError("Le mode cloudflare exige un service Render de production.")
+
 EKAKO_MAINTENANCE = os.environ.get("EKAKO_MAINTENANCE", "0") == "1"
 EKAKO_TURNSTILE_ENABLED = os.environ.get("EKAKO_TURNSTILE_ENABLED", "0") == "1"
 EKAKO_TURNSTILE_SITE_KEY = os.environ.get("EKAKO_TURNSTILE_SITE_KEY", "").strip()

@@ -22,7 +22,8 @@ IP_LIMIT = 20
 
 
 def _keys(request, username):
-    raw_ip = str(request.META.get("REMOTE_ADDR", "") or "unknown")
+    from config.client_ip import client_ip_for_throttle
+    raw_ip = client_ip_for_throttle(request)
     normalized_user = str(username).strip().casefold()
     secret = settings.SECRET_KEY.encode("utf-8")
 

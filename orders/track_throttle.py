@@ -21,7 +21,8 @@ IP_LIMIT = 20
 
 
 def _keys(request, order_no):
-    ip = str(request.META.get("REMOTE_ADDR", "") or "unknown")
+    from config.client_ip import client_ip_for_throttle
+    ip = client_ip_for_throttle(request)
     order = str(order_no).strip().casefold()
     secret = settings.SECRET_KEY.encode("utf-8")
 
