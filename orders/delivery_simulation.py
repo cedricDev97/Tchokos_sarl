@@ -65,11 +65,15 @@ def simulate_delivery(
     )
     extra_kg = (extra_grams + 999) // 1000
 
-    delivery_cost = (
+    moto_cost = (
         tariff.base_fcfa
         + distance_km * tariff.per_km_fcfa
-        + extra_kg * tariff.extra_kg_fcfa
-        + tariff.collection_flat_fcfa
+    )
+    weight_surcharge = extra_kg * tariff.extra_kg_fcfa
+    collection_cost = tariff.collection_flat_fcfa
+
+    delivery_cost = (
+        moto_cost + weight_surcharge + collection_cost
     )
 
     margin_free = (
@@ -85,6 +89,9 @@ def simulate_delivery(
     )
 
     return {
+        "moto_cost_fcfa": moto_cost,
+        "weight_surcharge_fcfa": weight_surcharge,
+        "collection_cost_fcfa": collection_cost,
         "delivery_cost_fcfa": delivery_cost,
         "margin_with_free_delivery_fcfa": margin_free,
         "minimum_margin_fcfa": minimum_margin_fcfa,
